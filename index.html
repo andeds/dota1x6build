@@ -502,7 +502,8 @@
             "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
             "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
             "Nature's Prophet": ["furion_sprout", "furion_teleportation", "furion_force_of_nature", "furion_wrath_of_nature"],
-            "Enigma": ["enigma_malefice", "enigma_demonic_conversion", "enigma_midnight_pulse", "enigma_black_hole"]
+            "Enigma": ["enigma_malefice", "enigma_demonic_conversion", "enigma_midnight_pulse", "enigma_black_hole"],
+            "Invoker": ["invoker_quas", "invoker_wex", "invoker_exort", "invoker_invoke"]
         };
 
         const POPULAR_ITEMS = [
@@ -529,14 +530,46 @@
             return adminList.includes(currentUser.uid);
         }
 
-        /* --- Авторизация и логирование --- */
+        /* --- Загрузка способностей из OpenDota API --- */
+        async function loadAllAbilitiesFromOpenDota() {
+            try {
+                const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
+                const data = await res.json();
+                
+                const fullSet = new Set();
+                
+                // Добавляем способности из ответа OpenDota
+                Object.values(data).forEach(heroObj => {
+                    if (heroObj && heroObj.abilities) {
+                        heroObj.abilities.forEach(ab => fullSet.add(ab));
+                    }
+                });
+
+                // Добавим страховочные наборы из локального словаря
+                Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
+                Object.values(HERO_ABILITIES_DATABASE).forEach(heroObj => {
+                    if (typeof heroObj === 'object') {
+                        Object.values(heroObj).forEach(ab => { if(ab) fullSet.add(ab); });
+                    }
+                });
+
+                allAbilitiesList = Array.from(fullSet);
+            } catch (e) {
+                console.warn("[API]: Не удалось загрузить constants/hero_abilities, используем локальные списки.", e);
+                const fullSet = new Set();
+                Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
+                allAbilitiesList = Array.from(fullSet);
+            }
+        }
+        loadAllAbilitiesFromOpenDota();
+
+        /* --- Авторизация --- */
         auth.onAuthStateChanged(async user => {
             const panel = document.getElementById("authPanel");
             const adminTabBtn = document.getElementById("tabAdminBtn");
 
             if (user) {
                 await user.reload();
-
                 currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
                 
@@ -547,7 +580,6 @@
 
                 if (checkIsAdmin()) {
                     adminTabBtn.style.display = 'inline-block';
-                    logToConsole(`[AUTH]: Авторизован администратор ${displayName} (UID: ${user.uid})`);
                 } else {
                     adminTabBtn.style.display = 'none';
                 }
@@ -630,7 +662,7 @@
             }
         });
 
-        /* --- Переключение вкладок --- */
+        /* --- Вкладки --- */
         function switchTab(tab) {
             if (tab === 'admin' && !checkIsAdmin()) {
                 alert("⛔ Доступ запрещен. У вас нет прав администратора.");
@@ -659,7 +691,7 @@
             openEditor();
         }
 
-        /* --- Консоль и функции админа --- */
+        /* --- Админ консоль --- */
         function logToConsole(message, isError = false) {
             const logsEl = document.getElementById('consoleLogs');
             if (!logsEl) return;
@@ -675,55 +707,43 @@
         }
 
         function handleConsoleKey(event) {
-            if (event.key === 'Enter') {
-                executeCommand();
-            }
+            if (event.key === 'Enter') executeCommand();
         }
 
         function executeCommand() {
-            if (!checkIsAdmin()) {
-                logToConsole("⛔ Ошибка: Недостаточно прав для выполнения команд.", true);
-                return;
-            }
+            if (!checkIsAdmin()) return;
             const inputEl = document.getElementById('consoleInput');
             const commandText = inputEl.value.trim();
             inputEl.value = '';
-
             if (!commandText) return;
 
             logToConsole(`> ${commandText}`);
-
             const parts = commandText.split(' ');
             const cmd = parts[0].toLowerCase();
             const targetUid = parts[1] ? parts[1].trim() : null;
 
             switch (cmd) {
                 case '/op':
-                    if (!targetUid) {
-                        logToConsole('Ошибка: Укажите UID пользователя.', true);
-                    } else if (adminList.includes(targetUid)) {
-                        logToConsole(`Пользователь уже админ.`, true);
-                    } else {
+                    if (!targetUid) logToConsole('Ошибка: Укажите UID.', true);
+                    else if (adminList.includes(targetUid)) logToConsole('Уже админ.', true);
+                    else {
                         adminList.push(targetUid);
                         logToConsole(`SUCCESS: UID ${targetUid} добавлен в админы!`);
                     }
                     break;
                 case '/deop':
-                    if (!targetUid) {
-                        logToConsole('Ошибка: Укажите UID.', true);
-                    } else if (targetUid === MASTER_ADMIN_UID) {
-                        logToConsole('Ошибка: Нельзя забрать права у Главного Администратора!', true);
-                    } else {
+                    if (!targetUid) logToConsole('Ошибка: Укажите UID.', true);
+                    else if (targetUid === MASTER_ADMIN_UID) logToConsole('Нельзя забрать права у Главного Администратора!', true);
+                    else {
                         adminList = adminList.filter(uid => uid !== targetUid);
                         logToConsole(`SUCCESS: Права у UID ${targetUid} отняты.`);
                     }
                     break;
                 case '/adminlist':
-                    logToConsole(`Список UID администраторов:\n - ` + adminList.join('\n - '));
+                    logToConsole(`Админы:\n - ` + adminList.join('\n - '));
                     break;
                 case '/myuid':
                     if (currentUser) logToConsole(`Ваш UID: ${currentUser.uid}`);
-                    else logToConsole('Не авторизован.', true);
                     break;
                 case '/clear':
                     document.getElementById('consoleLogs').innerHTML = '';
@@ -735,10 +755,7 @@
         }
 
         function adminDeleteBuild(buildKey) {
-            if (!checkIsAdmin()) {
-                alert("⛔ Нет прав администратора!");
-                return;
-            }
+            if (!checkIsAdmin()) return;
             if (confirm("Удалить сборку?")) {
                 db.ref(`player_builds/${buildKey}`).remove()
                     .then(() => alert("✅ Удалено!"))
@@ -759,18 +776,6 @@
 
         db.ref('hero_abilities').on('value', (snapshot) => {
             HERO_ABILITIES_DATABASE = snapshot.val() || {};
-            
-            // Заполняем общий список доступных иконок для модального окна выбора
-            const fullSet = new Set();
-            Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
-            Object.values(HERO_ABILITIES_DATABASE).forEach(heroObj => {
-                if (typeof heroObj === 'object') {
-                    Object.values(heroObj).forEach(ab => { if(ab) fullSet.add(ab); });
-                }
-            });
-            fullSet.add("enigma_black_hole");
-            allAbilitiesList = Array.from(fullSet);
-
             if (activeTab === 'main') renderBuild();
         });
 
@@ -781,12 +786,12 @@
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
             
-            // 1. Абсолютный приоритет: данные из Firebase (node hero_abilities)
+            // 1. Приоритет: Firebase (папка hero_abilities)
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
             
-            // 2. Второй приоритет: локальный словарь кастомных способностей
+            // 2. Приоритет: Локальный словарь CUSTOM_HERO_ABILITIES
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
@@ -1000,11 +1005,7 @@
         }
 
         function selectAbilityIcon(abName) {
-            if (!checkIsAdmin()) {
-                alert("⛔ Нет прав администратора!");
-                return;
-            }
-
+            if (!checkIsAdmin()) return;
             const safeKey = getSafeDbKey(currentHero);
             
             if (!HERO_ABILITIES_DATABASE[safeKey]) {
@@ -1025,11 +1026,7 @@
         function appendItemToInput(stageIdx, item) {
             const input = document.getElementById(`stage_items_${stageIdx}`);
             let currentVal = input.value.trim();
-            if (currentVal.length > 0) {
-                input.value = currentVal + ", " + item;
-            } else {
-                input.value = item;
-            }
+            input.value = currentVal ? currentVal + ", " + item : item;
         }
 
         function openEditor() {
@@ -1042,7 +1039,6 @@
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
             document.getElementById("modalTitle").innerText = `Создание сборки: ${currentHero} (Способность #${activeTalentId + 1})`;
-            
             document.getElementById("buildTitleInput").value = "";
 
             container.innerHTML = stagesData.map((stage, sIdx) => `
