@@ -817,12 +817,16 @@
 
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
+            
+            // 1. Приоритет базы данных Firebase (выбор через админку на сайте)
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
+            // 2. Локальный словарь кастомных героев
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
+            // 3. OpenDota API в последнюю очередь
             if (apiAbilitiesMap[hero] && apiAbilitiesMap[hero][index]) {
                 return getAbilityIconUrl(apiAbilitiesMap[hero][index]);
             }
@@ -1040,6 +1044,14 @@
             }
 
             const safeKey = getSafeDbKey(currentHero);
+            
+            // Мгновенное обновление локальных данных без ожидания ответа сервера, 
+            // чтобы интерфейс сразу подхватил новую картинку и не откатывал ее
+            if (!HERO_ABILITIES_DATABASE[safeKey]) {
+                HERO_ABILITIES_DATABASE[safeKey] = {};
+            }
+            HERO_ABILITIES_DATABASE[safeKey][activeTalentId] = abName;
+
             db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
                 .then(() => {
                     renderBuild();
