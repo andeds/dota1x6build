@@ -326,7 +326,7 @@
     <header>
         <div>
             <h1>Dota 1x6 — База Сборок</h1>
-            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2 (Каин учтен)</p>
+            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2 (5 слотов)</p>
         </div>
         <div class="user-auth-panel" id="authPanel">
             <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
@@ -477,7 +477,7 @@
         const MASTER_ADMIN_UID = "hnbWz45s9nYTRcbMv6leJ2gBVki2";
         let adminList = [
             MASTER_ADMIN_UID, 
-            "s3avMuug30g7Cbpyan6BL8actLs2"
+            "s3avMuug30g7CbpyaN6BL8actLs2"
         ];
 
         const HEROES_DATABASE = {
@@ -488,19 +488,19 @@
         };
 
         const CUSTOM_HERO_ABILITIES = {
-            "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
-            "Morphling": ["morphling_waveform", "morphling_adaptive_strike_agi", "morphling_morph_agi", "morphling_replicate"],
-            "Troll Warlord": ["troll_warlord_berserkers_rage", "troll_warlord_whirling_axes_ranged", "troll_warlord_fervor", "troll_warlord_battle_trance"],
-            "Shadow Fiend": ["nevermore_shadowraze1", "nevermore_necromastery", "nevermore_dark_lord", "nevermore_requiem"],
-            "Monkey King": ["monkey_king_boundless_strike", "monkey_king_tree_dance", "monkey_king_jingu_mastery", "monkey_king_wukongs_command"],
-            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omnislash"],
-            "Hoodwink": ["hoodwink_acorn_shot", "hoodwink_bushwhack", "hoodwink_scurry", "hoodwink_sharpshooter"],
-            "Drow Ranger": ["drow_ranger_frost_arrows", "drow_ranger_silence", "drow_ranger_multishot", "drow_ranger_marksmanship"],
-            "Broodmother": ["broodmother_spawn_spiderlings", "broodmother_spin_web", "broodmother_incapacitating_bite", "broodmother_insatiable_hunger"],
-            "Bloodseeker": ["bloodseeker_bloodrage", "bloodseeker_blood_bath", "bloodseeker_thirst", "bloodseeker_rupture"],
-            "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
-            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
-            "Nature's Prophet": ["furion_sprout", "furion_teleportation", "furion_force_of_nature", "furion_wrath_of_nature"]
+            "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage", "alchemist_greevils_greed"],
+            "Morphling": ["morphling_waveform", "morphling_adaptive_strike_agi", "morphling_morph_agi", "morphling_replicate", "morphling_adaptive_strike_str"],
+            "Troll Warlord": ["troll_warlord_berserkers_rage", "troll_warlord_whirling_axes_ranged", "troll_warlord_fervor", "troll_warlord_battle_trance", "troll_warlord_whirling_axes_melee"],
+            "Shadow Fiend": ["nevermore_shadowraze1", "nevermore_necromastery", "nevermore_dark_lord", "nevermore_requiem", "nevermore_shadowraze2"],
+            "Monkey King": ["monkey_king_boundless_strike", "monkey_king_tree_dance", "monkey_king_jingu_mastery", "monkey_king_wukongs_command", "monkey_king_primal_spring"],
+            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omnislash", "juggernaut_swift_slash"],
+            "Hoodwink": ["hoodwink_acorn_shot", "hoodwink_bushwhack", "hoodwink_scurry", "hoodwink_sharpshooter", "hoodwink_decoy"],
+            "Drow Ranger": ["drow_ranger_frost_arrows", "drow_ranger_silence", "drow_ranger_multishot", "drow_ranger_marksmanship", "drow_ranger_glacier"],
+            "Broodmother": ["broodmother_spawn_spiderlings", "broodmother_spin_web", "broodmother_incapacitating_bite", "broodmother_insatiable_hunger", "broodmother_silken_bola"],
+            "Bloodseeker": ["bloodseeker_bloodrage", "bloodseeker_blood_bath", "bloodseeker_thirst", "bloodseeker_rupture", "bloodseeker_blood_mist"],
+            "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void", "antimage_mana_overload"],
+            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember", "pudge_Eject"],
+            "Nature's Prophet": ["furion_sprout", "furion_teleportation", "furion_force_of_nature", "furion_wrath_of_nature", "furion_curse_of_the_old_growth"]
         };
 
         const POPULAR_ITEMS = [
@@ -806,7 +806,7 @@
                             return info && info.behavior;
                         });
 
-                        apiAbilitiesMap[name] = realAbilities.slice(0, 4);
+                        apiAbilitiesMap[name] = realAbilities.slice(0, 5);
                         realAbilities.forEach(a => fullSet.add(a));
                     }
                 });
@@ -909,7 +909,7 @@
                         <div class="talents-column-wrapper">
                             ${editAbilityBtnHtml}
                             <div class="talents-column">
-                                ${[0, 1, 2, 3].map(idx => {
+                                ${[0, 1, 2, 3, 4].map(idx => {
                                     const iconUrl = getHeroAbilityIconUrl(currentHero, idx);
                                     return `
                                         <div class="talent-icon ${idx === activeTalentId ? 'active' : ''}"
@@ -996,7 +996,15 @@
                         <div class="build-content-layout">
                             <div class="talents-column-wrapper">
                                 <div class="talents-column">
-                                    <div class="talent-icon active" style="background-image: url('${iconUrl}')"></div>
+                                    ${[0, 1, 2, 3, 4].map(idx => {
+                                        const subIconUrl = getHeroAbilityIconUrl(heroName, idx);
+                                        return `
+                                            <div class="talent-icon ${idx === talentIdx ? 'active' : ''}"
+                                                 style="background-image: url('${subIconUrl}')"
+                                                 title="Способность #${idx + 1}">
+                                            </div>
+                                        `;
+                                    }).join('')}
                                 </div>
                             </div>
 
