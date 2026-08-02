@@ -808,9 +808,10 @@
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
-        db.ref('hero_abilities').on('value', (snapshot) => {
+        // Слушаем изменения иконок один раз при инициализации, а не на каждый клик рендером
+        db.ref('hero_abilities').once('value').then((snapshot) => {
             HERO_ABILITIES_DATABASE = snapshot.val() || {};
-            if (activeTab === 'main') renderBuild();
+            renderBuild();
         });
 
         function getAbilityIconUrl(abName) {
@@ -1042,13 +1043,13 @@
             if (!HERO_ABILITIES_DATABASE[safeKey]) {
                 HERO_ABILITIES_DATABASE[safeKey] = {};
             }
+            // Мгновенно обновляем локально и закрываем окно, не дожидаясь сетевой задержки
             HERO_ABILITIES_DATABASE[safeKey][activeTalentId] = abName;
+            
+            closeAbilityEditor();
+            renderBuild();
 
             db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
-                .then(() => {
-                    closeAbilityEditor();
-                    renderBuild();
-                })
                 .catch(error => {
                     alert("❌ Ошибка сохранения иконки: " + error.message);
                 });
