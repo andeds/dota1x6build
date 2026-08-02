@@ -172,8 +172,10 @@
         .talents-column-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
+            position: relative;
+            z-index: 5;
         }
 
         .talents-column {
@@ -217,11 +219,25 @@
         .btn-delete-admin:hover { background: #c0392b; }
 
         .edit-ability-btn {
-            background: #2980b9; color: #fff; border: none;
-            padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold;
-            text-align: center; line-height: 1.2;
+            background: #2980b9; 
+            color: #fff; 
+            border: 1px solid #3498db;
+            padding: 8px 10px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.8rem; 
+            font-weight: bold;
+            text-align: center; 
+            line-height: 1.3;
+            width: 100%;
+            transition: all 0.2s;
+            pointer-events: auto !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        .edit-ability-btn:hover { background: #3498db; }
+        .edit-ability-btn:hover { 
+            background: #3498db; 
+            transform: translateY(-1px);
+        }
 
         .stages-grid { 
             flex-grow: 1;
@@ -865,7 +881,7 @@
             const stagesData = getCurrentStages();
             const isAdmin = checkIsAdmin();
 
-            let editAbilityBtnHtml = isAdmin ? `<button class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Изменить<br>иконку</button>` : '';
+            let editAbilityBtnHtml = isAdmin ? `<button type="button" class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Изменить иконку</button>` : '';
 
             let html = `
                 <div class="build-card">
