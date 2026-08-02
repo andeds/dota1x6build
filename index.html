@@ -60,6 +60,12 @@
             max-width: 1200px;
             margin: 0 auto 20px;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tabs-group {
+            display: flex;
             gap: 10px;
         }
 
@@ -78,6 +84,19 @@
             color: #000;
             border-color: var(--accent-orange);
         }
+
+        .create-build-action-btn {
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .create-build-action-btn:hover { background: #219150; }
 
         .category-section {
             max-width: 1200px; margin: 0 auto 20px;
@@ -111,12 +130,29 @@
             margin-bottom: 20px; border-bottom: 1px solid #1d2635; padding-bottom: 12px; 
         }
 
+        .build-title-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
         .author-tag {
             font-size: 0.85rem;
             color: var(--accent-orange);
             background: #18202c;
             padding: 4px 8px;
             border-radius: 4px;
+        }
+
+        .category-tag {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            background: #2c3e50;
+            color: #ecf0f1;
+            border: 1px solid #34495e;
         }
 
         .build-content-layout {
@@ -232,7 +268,7 @@
         .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: }
     </style>
 </head>
 <body>
@@ -250,8 +286,11 @@
 
     <!-- Вкладки навигации -->
     <div class="tab-navigation">
-        <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">Главная база</button>
-        <button class="tab-btn" id="tabCommunityBtn" onclick="switchTab('community')">Сборки от игроков</button>
+        <div class="tabs-group">
+            <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">Главная база</button>
+            <button class="tab-btn" id="tabCommunityBtn" onclick="switchTab('community')">Сборки от игроков</button>
+        </div>
+        <button class="create-build-action-btn" onclick="triggerCreateBuild()">➕ Создать сборку</button>
     </div>
 
     <!-- Раздел выбора героя -->
@@ -299,10 +338,29 @@
         <div class="modal-content">
             <h3 id="modalTitle" style="margin-bottom: 15px;">Редактирование сборки</h3>
             <form id="buildForm">
+                <div class="form-group">
+                    <label>Название сборки:</label>
+                    <input type="text" id="buildTitleInput" placeholder="Например: Стандартный керри закуп через БКБ" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Категория (Стиль игры):</label>
+                    <select id="buildCategoryInput">
+                        <option value="Агрессивная">⚔️ Агрессивная (Быстрый темп)</option>
+                        <option value="Фарм / Мидгейм" selected>🌾 Фарм / Мидгейм</option>
+                        <option value="Лейт / Защита">🛡️ Лейт / Защита</option>
+                        <option value="Магический урон">🔮 Посох / Магия</option>
+                        <option value="Экспериментальная">🧪 Экспериментальная</option>
+                    </select>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
                 <div id="stagesFormContainer"></div>
+                
                 <div class="modal-actions">
                     <button type="button" class="cancel-btn" onclick="closeEditor()">Отмена</button>
-                    <button type="submit" class="save-btn">Сохранить сборку</button>
+                    <button type="submit" class="save-btn">Опубликовать сборку</button>
                 </div>
             </form>
         </div>
@@ -462,6 +520,13 @@
             }
         }
 
+        function triggerCreateBuild() {
+            if (activeTab === 'community') {
+                switchTab('main');
+            }
+            openEditor();
+        }
+
         /* --- Firebase Listeners --- */
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
@@ -568,10 +633,12 @@
         function getCurrentStages() {
             const keyWithUnderscores = getSafeDbKey(currentHero);
             if (BUILDS_DATABASE[currentHero] && BUILDS_DATABASE[currentHero][String(activeTalentId)]) {
-                return BUILDS_DATABASE[currentHero][String(activeTalentId)];
+                const data = BUILDS_DATABASE[currentHero][String(activeTalentId)];
+                return Array.isArray(data) ? data : (data.stages || DEFAULT_STAGES);
             }
             if (BUILDS_DATABASE[keyWithUnderscores] && BUILDS_DATABASE[keyWithUnderscores][String(activeTalentId)]) {
-                return BUILDS_DATABASE[keyWithUnderscores][String(activeTalentId)];
+                const data = BUILDS_DATABASE[keyWithUnderscores][String(activeTalentId)];
+                return Array.isArray(data) ? data : (data.stages || DEFAULT_STAGES);
             }
             return DEFAULT_STAGES;
         }
@@ -644,7 +711,7 @@
             const keys = Object.keys(PLAYER_BUILDS_DATABASE);
 
             if (keys.length === 0) {
-                container.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 40px;">Пока нет сборок от игроков. Авторизуйтесь и создайте первую!</p>`;
+                container.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 40px;">Пока нет сборок от игроков. Нажмите «➕ Создать сборку», чтобы стать первым!</p>`;
                 return;
             }
 
@@ -653,16 +720,20 @@
                 const build = PLAYER_BUILDS_DATABASE[key];
                 const heroName = build.hero || "Герой";
                 const author = build.author || "Аноним";
+                const buildTitle = build.title || "Сборка без названия";
+                const category = build.category || "Стандарт";
                 const talentIdx = build.talentIndex || 0;
                 const iconUrl = getHeroAbilityIconUrl(heroName, talentIdx);
 
                 html += `
                     <div class="build-card">
                         <div class="build-header">
-                            <div>
-                                <h2 style="display:inline-block; margin-right: 10px;">${heroName.toUpperCase()}</h2>
-                                <span class="author-tag">Автор: ${author}</span>
+                            <div class="build-title-area">
+                                <h2 style="display:inline-block;">${heroName.toUpperCase()}</h2>
+                                <span style="font-size: 1.1rem; font-weight: bold; color: var(--accent-orange);">— ${buildTitle}</span>
+                                <span class="category-tag">${category}</span>
                             </div>
+                            <span class="author-tag">Автор: ${author}</span>
                         </div>
 
                         <div class="build-content-layout">
@@ -736,8 +807,10 @@
 
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
-            document.getElementById("modalTitle").innerText = `Редактирование: ${currentHero} (Способность #${activeTalentId + 1})`;
+            document.getElementById("modalTitle").innerText = `Создание сборки: ${currentHero} (Способность #${activeTalentId + 1})`;
             
+            document.getElementById("buildTitleInput").value = "";
+
             container.innerHTML = stagesData.map((stage, sIdx) => `
                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
                     <div class="form-group">
@@ -771,6 +844,8 @@
 
         document.getElementById("buildForm").addEventListener("submit", function(e) {
             e.preventDefault();
+            const buildTitle = document.getElementById("buildTitleInput").value.trim();
+            const buildCategory = document.getElementById("buildCategoryInput").value;
             const newStages = [];
 
             for (let sIdx = 0; sIdx < 4; sIdx++) {
@@ -784,11 +859,19 @@
 
             const safeKey = getSafeDbKey(currentHero);
             
-            db.ref(`builds/${safeKey}/${activeTalentId}`).set(newStages);
+            // Сохраняем в главную базу
+            db.ref(`builds/${safeKey}/${activeTalentId}`).set({
+                title: buildTitle,
+                category: buildCategory,
+                stages: newStages
+            });
 
+            // Публикуем в сообщество
             const playerBuildData = {
                 hero: currentHero,
                 talentIndex: activeTalentId,
+                title: buildTitle,
+                category: buildCategory,
                 author: currentUser.displayName || currentUser.email.split('@')[0],
                 authorUid: currentUser.uid,
                 stages: newStages,
@@ -800,7 +883,8 @@
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
                     closeEditor();
-                    alert("✅ Сборка успешно сохранена и опубликована!");
+                    alert("✅ Сборка успешно создана и опубликована!");
+                    switchTab('community');
                 }
             });
         });
