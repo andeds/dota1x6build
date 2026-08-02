@@ -530,7 +530,7 @@
             const adminTabBtn = document.getElementById("tabAdminBtn");
 
             if (user) {
-                // Пытаемся обновить данные пользователя, чтобы получить актуальный статус emailVerified с сервера
+                // Обновляем данные пользователя для получения актуального статуса emailVerified с сервера
                 await user.reload();
 
                 // ЕСЛИ ПОЧТА НЕ ПОДТВЕРЖДЕНА
@@ -543,16 +543,7 @@
                     return;
                 }
 
-                // ЕСЛИ ПОЧТА ПОДТВЕРЖДЕНА, но требуется повторный вход (один раз за сессию)
-                if (sessionStorage.getItem("relogin_required") !== "done") {
-                    console.log("[AUTH LOG]: Почта подтверждена, требуется повторный вход на сайт.");
-                    sessionStorage.setItem("relogin_required", "done");
-                    
-                    await auth.signOut();
-                    alert("✅ Почта подтверждена! Пожалуйста, войдите на сайт повторно для продолжения.");
-                    openAuthModal('login');
-                    return;
-                }
+                // УБРАН блок принудительного разлогинивания через sessionStorage, чтобы исключить бесконечный цикл перезагрузки
 
                 currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
