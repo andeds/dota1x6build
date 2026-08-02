@@ -275,6 +275,19 @@
         }
         .console-btn:hover { background: #00cc00; }
 
+        .action-button-admin {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 15px;
+            transition: background 0.2s;
+        }
+        .action-button-admin:hover { background: #2980b9; }
+
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 2000; }
         .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 650px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
         .form-group { margin-bottom: 15px; text-align: left; }
@@ -322,12 +335,14 @@
 
     <div class="container" id="adminContainer" style="display: none;">
         <div class="build-card">
-            <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Консоль Администратора</h2>
+            <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Панель Автозаполнения и Администрирования</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">
-                Команды: <code>/op &lt;UID&gt;</code>, <code>/deop &lt;UID&gt;</code>, <code>/adminlist</code>, <code>/myuid</code>, <code>/clear</code>
+                Нажмите кнопку ниже, чтобы автоматически выгрузить всех героев из справочника Dota 2 в узел <code>hero_abilities</code> базы данных Firebase:
             </p>
             
-            <div class="console-wrapper">
+            <button class="action-button-admin" onclick="autoPopulateHeroesToFirebase()">🚀 Автозаполнить всех героев в Firebase</button>
+
+            <div class="console-wrapper" style="margin-top: 15px;">
                 <div class="console-logs" id="consoleLogs">
                     <div class="console-log-item">[SYSTEM]: Панель управления администратора готова.</div>
                 </div>
@@ -426,7 +441,6 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Запасные способности на случай, если API не ответит (с исправленными слотами для Muerta, Nyx, Pangolier, Vengeful Spirit, WD, Tinker, Juggernaut, Wraith King, Huskar, Lifestealer)
         const CUSTOM_HERO_ABILITIES = {
             "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
@@ -706,6 +720,55 @@
             }
         }
 
+        // Автоматическая загрузка ВСЕХ героев из списков и записей их способностей в Firebase hero_abilities
+        async function autoPopulateHeroesToFirebase() {
+            if (!checkIsAdmin()) return;
+            if (!confirm("Вы уверены, что хотите запустить автозаполнение всех героев и их способностей в Firebase?")) return;
+
+            logToConsole("Начало процесса автозаполнения героев...");
+            
+            // Если OpenDota еще не загрузилась, подгрузим её
+            if (Object.keys(openDotaHeroAbilities).length === 0) {
+                try {
+                    const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
+                    openDotaHeroAbilities = await res.json();
+                } catch(e) {
+                    logToConsole("Не удалось загрузить данные из OpenDota API", true);
+                    return;
+                }
+            }
+
+            let count = 0;
+            const allHeroes = [...HEROES_DATABASE.Strength, ...HEROES_DATABASE.Agility, ...HEROES_DATABASE.Intelligence, ...HEROES_DATABASE.Universal];
+
+            for (const hero of allHeroes) {
+                const safeKey = getSafeDbKey(hero);
+                let abilitiesList = [];
+
+                // 1. Пробуем взять из жестко прописанных кастомных (они точные)
+                if (CUSTOM_HERO_ABILITIES[hero]) {
+                    abilitiesList = CUSTOM_HERO_ABILITIES[hero];
+                } else {
+                    // 2. Иначе берем из OpenDota API
+                    const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
+                    if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
+                        abilitiesList = openDotaHeroAbilities[apiHeroKey].abilities.slice(0, 4);
+                    }
+                }
+
+                if (abilitiesList.length > 0) {
+                    await db.ref(`hero_abilities/${safeKey}`).set(abilitiesList);
+                    logToConsole(`[OK] Герой сохранен: ${hero} -> [${abilitiesList.join(', ')}]`);
+                    count++;
+                } else {
+                    logToConsole(`[WARN] Не найдены способности для героя: ${hero}`);
+                }
+            }
+
+            logToConsole(`🎉 Успешно добавлено/обновлено героев в Firebase: ${count}`);
+            alert(`✅ Автозаполнение завершено! Успешно обработано героев: ${count}`);
+        }
+
         function adminDeleteBuild(buildKey) {
             if (!checkIsAdmin()) return;
             if (confirm("Удалить сборку?")) {
@@ -951,7 +1014,7 @@
                         <label>Этап / Тайминг</label>
                         <input type="text" id="stage_time_${sIdx}" value="${stage.time || ''}">
                     </div>
-                    <div class="form-group">
+                    - <div class="form-group">
                         <label>Предметы (до 6 шт):</label>
                         <input type="text" id="stage_items_${sIdx}" value="${stage.items ? stage.items.join(', ') : ''}">
                         
