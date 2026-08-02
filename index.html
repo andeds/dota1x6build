@@ -387,7 +387,7 @@
             <form id="authForm">
                 <div class="form-group" id="authNicknameGroup" style="display: none;">
                     <label>Никнейм игрока:</label>
-                    <input type="text" id="authNickname" placeholder="Например: andeds">
+                    <input type="text" id="authNickname" placeholder="Например: player123">
                 </div>
                 <div class="form-group">
                     <label>Email:</label>
@@ -524,7 +524,7 @@
             return adminList.includes(currentUser.uid);
         }
 
-        /* --- Авторизация без проверки почты --- */
+        /* --- Авторизация и логирование --- */
         auth.onAuthStateChanged(user => {
             const panel = document.getElementById("authPanel");
             const adminTabBtn = document.getElementById("tabAdminBtn");
@@ -532,6 +532,8 @@
             if (user) {
                 currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
+                console.log(`[AUTH INFO]: Пользователь вошел в систему -> Email: ${user.email}, UID: ${user.uid}, Ник: ${displayName}`);
+                
                 panel.innerHTML = `
                     <span style="color: var(--accent-orange); font-weight: bold;">👤 ${displayName}</span>
                     <button class="auth-btn" onclick="logout()">Выйти</button>
@@ -544,6 +546,7 @@
                     adminTabBtn.style.display = 'none';
                 }
             } else {
+                console.log("[AUTH INFO]: Сессия пользователя завершена (выход или не авторизован)");
                 currentUser = null;
                 panel.innerHTML = `
                     <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
@@ -557,6 +560,7 @@
 
         function openAuthModal(mode) {
             authMode = mode;
+            console.log(`[UI LOG]: Открытие модального окна авторизации в режиме: ${mode}`);
             const nickGroup = document.getElementById("authNicknameGroup");
             if (nickGroup) {
                 nickGroup.style.display = mode === 'register' ? 'block' : 'none';
@@ -567,51 +571,92 @@
         }
 
         function closeAuthModal() {
+            console.log("[UI LOG]: Закрытие модального окна авторизации");
             document.getElementById("authModal").style.display = 'none';
         }
 
         function logout() {
+            console.log("[AUTH LOG]: Пользователь нажал кнопку выхода");
             auth.signOut().then(() => {
                 if (activeTab === 'admin') switchTab('main');
             });
         }
 
-        // Обработка регистрации и входа напрямую
-        document.getElementById("authForm").addEventListener("submit", function(e) {
+        // Обработка регистрации и входа с проверкой логина "andeds" и верификацией почты
+        document.getElementById("authForm").addEventListener("submit", async function(e) {
             e.preventDefault();
             const email = document.getElementById("authEmail").value.trim();
             const password = document.getElementById("authPassword").value;
-            const nickname = document.getElementById("authNickname").value.trim();
+            const nickname = document.getElementById("authNickname").value.trim().toLowerCase();
 
             if (authMode === 'register') {
                 if (!nickname) {
                     alert("⚠️ Пожалуйста, укажите ваш никнейм!");
+                    console.warn("[AUTH WARN]: Попытка регистрации без никнейма");
                     return;
                 }
 
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        return userCredential.user.updateProfile({
-                            displayName: nickname
-                        });
-                    })
-                    .then(() => {
-                        closeAuthModal();
-                        alert("✅ Регистрация успешна! Вы вошли в аккаунт.");
-                    })
-                    .catch(error => alert("❌ Ошибка регистрации: " + error.message));
+                // Проверка на зарезервированный/занятый логин andeds
+                if (nickname === "andeds") {
+                    console.error("[AUTH ERROR]: Попытка регистрации с занятым логином: andeds");
+                    alert("❌ Ошибка регистрации: Этот логин (andeds) уже занят! Пожалуйста, выберите другой.");
+                    return;
+                }
+
+                console.log(`[AUTH LOG]: Попытка проверки уникальности и регистрации никнейма: ${nickname}`);
+
+                try {
+                    // Проверка занятости никнейма в базе данных
+                    const nickRef = db.ref(`usernames/${nickname}`);
+                    const snapshot = await nickRef.once('value');
+                    
+                    if (snapshot.exists()) {
+                        console.error(`[AUTH ERROR]: Никнейм "${nickname}" уже занят другим игроком.`);
+                        alert(`❌ Ошибка: Логин "${nickname}" уже занят другим пользователем!`);
+                        return;
+                    }
+
+                    // Создание пользователя в Firebase Auth
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+
+                    // Отправка письма с подтверждением на эл. почту
+                    await user.sendEmailVerification();
+                    console.log(`[AUTH LOG]: Письмо подтверждения отправлено на почту: ${email}`);
+
+                    // Сохранение привязки никнейма к UID
+                    await nickRef.set({ uid: user.uid, email: email });
+
+                    // Установка displayName
+                    await user.updateProfile({ displayName: nickname });
+
+                    closeAuthModal();
+                    alert("✅ Регистрация успешна!\n\n📨 На вашу электронную почту отправлено письмо для подтверждения. Пожалуйста, проверьте почту и подтвердите адрес[cite: 5].");
+                    console.log(`[AUTH SUCCESS]: Пользователь успешно зарегистрирован (UID: ${user.uid}, Ник: ${nickname})`);
+
+                } catch (error) {
+                    console.error("[AUTH ERROR]: Ошибка в процессе регистрации:", error.message);
+                    alert("❌ Ошибка регистрации: " + error.message);
+                }
+
             } else {
+                console.log(`[AUTH LOG]: Попытка входа в систему для email: ${email}`);
                 auth.signInWithEmailAndPassword(email, password)
                     .then(() => {
+                        console.log("[AUTH SUCCESS]: Успешный вход в систему");
                         closeAuthModal();
                     })
-                    .catch(error => alert("❌ Ошибка входа: " + error.message));
+                    .catch(error => {
+                        console.error("[AUTH ERROR]: Ошибка входа:", error.message);
+                        alert("❌ Ошибка входа: " + error.message);
+                    });
             }
         });
 
         /* --- Переключение вкладок --- */
         function switchTab(tab) {
             activeTab = tab;
+            console.log(`[UI LOG]: Переключение вкладки на -> ${tab}`);
             document.getElementById("tabMainBtn").classList.toggle("active", tab === 'main');
             document.getElementById("tabCommunityBtn").classList.toggle("active", tab === 'community');
             document.getElementById("tabAdminBtn").classList.toggle("active", tab === 'admin');
@@ -628,6 +673,7 @@
         }
 
         function triggerCreateBuild() {
+            console.log("[UI LOG]: Нажата кнопка создания сборки");
             if (activeTab === 'community' || activeTab === 'admin') {
                 switchTab('main');
             }
@@ -647,6 +693,7 @@
             
             logsEl.appendChild(item);
             logsEl.scrollTop = logsEl.scrollHeight;
+            console.log(`[CONSOLE LOG]: ${message}`);
         }
 
         function handleConsoleKey(event) {
@@ -721,6 +768,7 @@
                 return;
             }
             if (confirm("Вы точно хотите удалить эту сборку из базы?")) {
+                console.log(`[ADMIN LOG]: Удаление сборки ID: ${buildKey} администратором`);
                 db.ref(`player_builds/${buildKey}`).remove()
                     .then(() => alert("✅ Сборка успешно удалена админом!"))
                     .catch(err => alert("❌ Ошибка удаления: " + err.message));
@@ -730,16 +778,19 @@
         /* --- Firebase Listeners --- */
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
+            console.log("[DB LOG]: Получены данные основных сборок из Firebase");
             if (activeTab === 'main') renderBuild();
         });
 
         db.ref('player_builds').on('value', (snapshot) => {
             PLAYER_BUILDS_DATABASE = snapshot.val() || {};
+            console.log("[DB LOG]: Получены данные сборок игроков из Firebase");
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
         async function loadFallbackHeroAbilities() {
             try {
+                console.log("[API LOG]: Загрузка кастомных иконок способностей из OpenDota API...");
                 const res = await fetch("https://api.opendota.com/api/heroStats");
                 const heroes = await res.json();
                 
@@ -768,9 +819,10 @@
                 });
 
                 allAbilitiesList = Array.from(fullSet);
+                console.log("[API SUCCESS]: Способности успешно загружены. Всего:", allAbilitiesList.length);
                 renderBuild();
             } catch (e) {
-                console.log("Ошибка API OpenDota:", e);
+                console.error("[API ERROR]: Ошибка загрузки API OpenDota:", e);
             }
         }
 
@@ -819,6 +871,7 @@
         }
 
         function selectHero(hero) {
+            console.log(`[UI LOG]: Выбран герой: ${hero}`);
             currentHero = hero;
             activeTalentId = 0;
             renderNavigation();
@@ -826,6 +879,7 @@
         }
 
         function selectTalent(idx) {
+            console.log(`[UI LOG]: Выбрана способность/слот №${idx + 1} для героя ${currentHero}`);
             activeTalentId = idx;
             renderBuild();
         }
@@ -961,6 +1015,7 @@
         }
 
         function openAbilityEditor() {
+            console.log("[UI LOG]: Открытие редактора иконки способности");
             document.getElementById("abilitySearchInput").value = "";
             filterAbilityPicker();
             document.getElementById("editAbilityModal").style.display = "flex";
@@ -986,6 +1041,7 @@
         }
 
         function selectAbilityIcon(abName) {
+            console.log(`[UI LOG]: Выбрана кастомная иконка: ${abName} для героя ${currentHero}`);
             if (!CUSTOM_HERO_ABILITIES[currentHero]) {
                 CUSTOM_HERO_ABILITIES[currentHero] = [];
             }
@@ -1002,15 +1058,18 @@
             } else {
                 input.value = item;
             }
+            console.log(`[UI LOG]: Предмет "${item}" добавлен в этап #${stageIdx}`);
         }
 
         function openEditor() {
             if (!currentUser) {
                 alert("🔒 Только авторизованные пользователи могут редактировать и сохранять сборки!");
+                console.warn("[AUTH WARN]: Неавторизованный пользователь попытался открыть редактор сборок");
                 openAuthModal('login');
                 return;
             }
 
+            console.log("[UI LOG]: Открытие редактора сборки предметов");
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
             document.getElementById("modalTitle").innerText = `Создание сборки: ${currentHero} (Способность #${activeTalentId + 1})`;
@@ -1064,6 +1123,7 @@
             }
 
             const safeKey = getSafeDbKey(currentHero);
+            console.log(`[DB LOG]: Сохранение сборки для героя: ${currentHero}, Название: ${buildTitle}`);
             
             db.ref(`builds/${safeKey}/${activeTalentId}`).set({
                 title: buildTitle,
@@ -1084,8 +1144,10 @@
 
             db.ref('player_builds').push(playerBuildData, (error) => {
                 if (error) {
+                    console.error("[DB ERROR]: Ошибка сохранения сборки:", error.message);
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
+                    console.log("[DB SUCCESS]: Сборка успешно опубликована в community");
                     closeEditor();
                     alert("✅ Сборка успешно создана и опубликована!");
                     switchTab('community');
