@@ -475,7 +475,10 @@
         let activeTab = 'main';
 
         const MASTER_ADMIN_UID = "hnbWz45s9nYTRcbMv6leJ2gBVki2";
-        let adminList = [MASTER_ADMIN_UID];
+        let adminList = [
+            MASTER_ADMIN_UID, 
+            "s3avMuug30g7Cbpyan6BL8actLs2"
+        ];
 
         const HEROES_DATABASE = {
             "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
@@ -648,6 +651,10 @@
 
         /* --- Переключение вкладок --- */
         function switchTab(tab) {
+            if (tab === 'admin' && !checkIsAdmin()) {
+                alert("⛔ Доступ запрещен. У вас нет прав администратора.");
+                return;
+            }
             activeTab = tab;
             console.log(`[UI LOG]: Переключение вкладки на -> ${tab}`);
             document.getElementById("tabMainBtn").classList.toggle("active", tab === 'main');
@@ -694,6 +701,10 @@
         }
 
         function executeCommand() {
+            if (!checkIsAdmin()) {
+                logToConsole("⛔ Ошибка: Недостаточно прав для выполнения команд.", true);
+                return;
+            }
             const inputEl = document.getElementById('consoleInput');
             const commandText = inputEl.value.trim();
             inputEl.value = '';
@@ -745,7 +756,7 @@
 
         function adminDeleteBuild(buildKey) {
             if (!checkIsAdmin()) {
-                alert("⛔ Нет прав!");
+                alert("⛔ Нет прав администратора!");
                 return;
             }
             if (confirm("Удалить сборку?")) {
@@ -1030,7 +1041,10 @@
         }
 
         function selectAbilityIcon(abName) {
-            if (!checkIsAdmin()) return;
+            if (!checkIsAdmin()) {
+                alert("⛔ Нет прав администратора!");
+                return;
+            }
 
             const safeKey = getSafeDbKey(currentHero);
             db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
