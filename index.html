@@ -175,7 +175,6 @@
             gap: 10px;
             align-items: center;
             position: relative;
-            padding-top: 36px; /* Отступ сверху под абсолютно позиционированную кнопку */
         }
 
         .talents-column {
@@ -219,9 +218,6 @@
         .btn-delete-admin:hover { background: #c0392b; }
 
         .edit-ability-btn {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             background: #2980b9; 
             color: #fff; 
@@ -234,7 +230,7 @@
             text-align: center; 
             transition: all 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            z-index: 999;
+            margin-bottom: 5px;
         }
         .edit-ability-btn:hover { 
             background: #3498db; 
@@ -492,6 +488,7 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
+        // Запасные способности на случай, если API не ответит
         const CUSTOM_HERO_ABILITIES = {
             "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
@@ -560,6 +557,7 @@
         ];
 
         let allAbilitiesList = [];
+        let openDotaHeroAbilities = {};
         let BUILDS_DATABASE = {};
         let PLAYER_BUILDS_DATABASE = {};
         let HERO_ABILITIES_DATABASE = {};
@@ -578,6 +576,8 @@
             try {
                 const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
                 const data = await res.json();
+                openDotaHeroAbilities = data;
+
                 const fullSet = new Set();
                 Object.values(data).forEach(heroObj => {
                     if (heroObj && heroObj.abilities) {
@@ -591,6 +591,7 @@
                     }
                 });
                 allAbilitiesList = Array.from(fullSet);
+                renderBuild();
             } catch (e) {
                 const fullSet = new Set();
                 Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
@@ -814,12 +815,27 @@
 
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
+            
+            // 1. Если иконка была изменена вручную через админку/базу
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
+
+            // 2. Ищем способности через загруженный OpenDota API ключ
+            const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
+            if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
+                const abs = openDotaHeroAbilities[apiHeroKey].abilities;
+                if (abs[index]) {
+                    return getAbilityIconUrl(abs[index]);
+                }
+            }
+
+            // 3. Используем запасной список
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
+
+            // Заглушка, если ничего не нашлось
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
@@ -878,6 +894,15 @@
             return DEFAULT_STAGES;
         }
 
+        let editingTargetTalentIndex = null;
+
+        function openAbilityEditorForTalent(idx) {
+            editingTargetTalentIndex = idx;
+            document.getElementById("abilitySearchInput").value = "";
+            filterAbilityPicker();
+            document.getElementById("editAbilityModal").style.display = "flex";
+        }
+
         function renderBuild() {
             const container = document.getElementById("buildsContainer");
             const stagesData = getCurrentStages();
@@ -891,7 +916,7 @@
 
                     <div class="build-content-layout">
                         <div class="talents-column-wrapper">
-                            <button type="button" class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Иконка</button>
+                            <button type="button" class="edit-ability-btn" onclick="openAbilityEditorForTalent(activeTalentId)">✏️ Иконка</button>
                             <div class="talents-column">
                                 ${[0, 1, 2, 3].map(idx => {
                                     const iconUrl = getHeroAbilityIconUrl(currentHero, idx);
@@ -995,12 +1020,6 @@
             container.innerHTML = html;
         }
 
-        function openAbilityEditor() {
-            document.getElementById("abilitySearchInput").value = "";
-            filterAbilityPicker();
-            document.getElementById("editAbilityModal").style.display = "flex";
-        }
-
         function closeAbilityEditor() {
             document.getElementById("editAbilityModal").style.display = "none";
         }
@@ -1021,16 +1040,17 @@
 
         function selectAbilityIcon(abName) {
             const safeKey = getSafeDbKey(currentHero);
+            const targetIdx = editingTargetTalentIndex !== null ? editingTargetTalentIndex : activeTalentId;
             
             if (!HERO_ABILITIES_DATABASE[safeKey]) {
                 HERO_ABILITIES_DATABASE[safeKey] = {};
             }
             
-            HERO_ABILITIES_DATABASE[safeKey][activeTalentId] = abName;
+            HERO_ABILITIES_DATABASE[safeKey][targetIdx] = abName;
             closeAbilityEditor();
             renderBuild();
 
-            db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
+            db.ref(`hero_abilities/${safeKey}/${targetIdx}`).set(abName)
                 .then(() => {
                     console.log("✅ Иконка успешно сохранена в базу данных!");
                 })
