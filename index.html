@@ -102,7 +102,7 @@
         .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -160,8 +160,9 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Ручная кастомная раскладка под Dota 1x6
+        // Кастомная раскладка способностей под Dota 1x6 (для переопределения)
         const CUSTOM_HERO_ABILITIES = {
+            "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Morphling": ["morphling_waveform", "morphling_adaptive_strike_agi", "morphling_morph_agi", "morphling_replicate"],
             "Troll Warlord": ["troll_warlord_berserkers_rage", "troll_warlord_whirling_axes_ranged", "troll_warlord_fervor", "troll_warlord_battle_trance"],
             "Shadow Fiend": ["nevermore_shadowraze1", "nevermore_necromastery", "nevermore_dark_lord", "nevermore_requiem"],
@@ -185,10 +186,10 @@
 
         let apiAbilitiesMap = {};
         let BUILDS_DATABASE = {};
-        let currentHero = "Morphling";
+        let currentHero = "Alchemist";
         let activeTalentId = 0;
 
-        // Резервная подгрузка способностей для ВСЕХ остальныx героев через OpenDota
+        // Фильтрованная загрузка 1, 2, 3 и ульты с OpenDota
         async function loadFallbackHeroAbilities() {
             try {
                 const res = await fetch("https://api.opendota.com/api/heroStats");
@@ -197,31 +198,39 @@
                 const capabilitiesRes = await fetch("https://api.opendota.com/api/constants/hero_abilities");
                 const capabilities = await capabilitiesRes.json();
 
+                const abilitiesInfoRes = await fetch("https://api.opendota.com/api/constants/abilities");
+                const abilitiesInfo = await abilitiesInfoRes.json();
+
                 heroes.forEach(h => {
                     const name = h.localized_name;
-                    const heroKey = h.name;
+                    const heroKey = h.name; // Например "npc_dota_hero_alchemist"
+
                     if (capabilities[heroKey] && capabilities[heroKey].abilities) {
-                        apiAbilitiesMap[name] = capabilities[heroKey].abilities.filter(a => a !== "generic_hidden").slice(0, 4);
+                        const realAbilities = capabilities[heroKey].abilities.filter(ab => {
+                            if (ab === "generic_hidden" || ab.includes("special_bonus")) return false;
+                            const info = abilitiesInfo[ab];
+                            return info && info.behavior;
+                        });
+
+                        apiAbilitiesMap[name] = realAbilities.slice(0, 4);
                     }
                 });
+
                 renderBuild();
             } catch (e) {
-                console.log("Ошибка API:", e);
+                console.log("Ошибка API OpenDota:", e);
             }
         }
 
         function getAbilityIconUrl(hero, index) {
-            // 1. Приоритет: кастомная раскладка Dota 1x6
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 const abName = CUSTOM_HERO_ABILITIES[hero][index];
                 return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
             }
-            // 2. Фоллбек: стандартные иконки с OpenDota API
             if (apiAbilitiesMap[hero] && apiAbilitiesMap[hero][index]) {
                 const abName = apiAbilitiesMap[hero][index];
                 return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
             }
-            // 3. Заглушка
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
@@ -238,6 +247,7 @@
             { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "swift_blink", "butterfly", "daedalus"], "neutral": "apex" }
         ];
 
+        // Слушатель Firebase
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
             renderBuild();
@@ -270,9 +280,13 @@
         }
 
         function getCurrentStages() {
-            const safeHeroKey = currentHero.replace(/\s+/g, '_');
-            if (BUILDS_DATABASE[safeHeroKey] && BUILDS_DATABASE[safeHeroKey][String(activeTalentId)]) {
-                return BUILDS_DATABASE[safeHeroKey][String(activeTalentId)];
+            const keyWithUnderscores = currentHero.replace(/\s+/g, '_');
+            
+            if (BUILDS_DATABASE[currentHero] && BUILDS_DATABASE[currentHero][String(activeTalentId)]) {
+                return BUILDS_DATABASE[currentHero][String(activeTalentId)];
+            }
+            if (BUILDS_DATABASE[keyWithUnderscores] && BUILDS_DATABASE[keyWithUnderscores][String(activeTalentId)]) {
+                return BUILDS_DATABASE[keyWithUnderscores][String(activeTalentId)];
             }
             return DEFAULT_STAGES;
         }
@@ -323,7 +337,7 @@
                                             ${stage.neutral ? `<img src="${neutralImg}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${stage.neutral}';" title="${stage.neutral}">` : ''}
                                         </div>
                                     </div>
-                                    <div style="font-size:0.85rem; font-weight:bold;">${stage.time}</div>
+                                    <div style="font-size:0.85rem; font-weight:bold;">${stage.time || ''}</div>
                                 </div>
                             `;
                         }).join('')}
@@ -352,7 +366,7 @@
                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
                     <div class="form-group">
                         <label>Этап / Тайминг</label>
-                        <input type="text" id="stage_time_${sIdx}" value="${stage.time}">
+                        <input type="text" id="stage_time_${sIdx}" value="${stage.time || ''}">
                     </div>
                     <div class="form-group">
                         <label>Предметы (до 6 шт):</label>
@@ -392,8 +406,7 @@
                 newStages.push({ time, items, neutral });
             }
 
-            const safeHeroKey = currentHero.replace(/\s+/g, '_');
-            db.ref(`builds/${safeHeroKey}/${activeTalentId}`).set(newStages, (error) => {
+            db.ref(`builds/${currentHero}/${activeTalentId}`).set(newStages, (error) => {
                 if (error) {
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
