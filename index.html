@@ -363,7 +363,7 @@
         <div class="build-card">
             <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Панель Автозаполнения и Администрирования</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">
-                Нажмите кнопку ниже, чтобы автоматически выгрузить всех героев из справочника Dota 2 в узел <code>hero_abilities</code> базы данных Firebase:
+                Нажмите кнопку ниже, чтобы выгрузить всех героев из локального справочника в узел <code>hero_abilities</code> базы данных Firebase:
             </p>
             
             <button class="action-button-admin" onclick="autoPopulateHeroesToFirebase()">🚀 Автозаполнить всех героев в Firebase</button>
@@ -533,7 +533,6 @@
             "satanic", "butterfly", "daedalus", "monkey_king_bar", "abyssal_blade", "bloodthorn", "heart", "assault", "shivas_guard", "sphere", "refresher", "octarine_core", "aghanims_scepter"
         ];
 
-        let openDotaHeroAbilities = {};
         let BUILDS_DATABASE = {};
         let PLAYER_BUILDS_DATABASE = {};
         let HERO_ABILITIES_DATABASE = {};
@@ -547,18 +546,6 @@
         function checkIsAdmin() {
             return isAdminUser;
         }
-
-        async function loadAllAbilitiesFromOpenDota() {
-            try {
-                const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
-                const data = await res.json();
-                openDotaHeroAbilities = data;
-                renderBuild();
-            } catch (e) {
-                console.error("Could not load OpenDota abilities:", e);
-            }
-        }
-        loadAllAbilitiesFromOpenDota();
 
         auth.onAuthStateChanged(async user => {
             const panel = document.getElementById("authPanel");
@@ -749,40 +736,21 @@
             if (!checkIsAdmin()) return;
             if (!confirm("Вы уверены, что хотите запустить автозаполнение всех героев и их способностей в Firebase?")) return;
 
-            logToConsole("Начало процесса автозаполнения героев...");
+            logToConsole("Начало процесса автозаполнения героев из локального справочника...");
             
-            if (Object.keys(openDotaHeroAbilities).length === 0) {
-                try {
-                    const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
-                    openDotaHeroAbilities = await res.json();
-                } catch(e) {
-                    logToConsole("Не удалось загрузить данные из OpenDota API", true);
-                    return;
-                }
-            }
-
             let count = 0;
             const allHeroes = [...HEROES_DATABASE.Strength, ...HEROES_DATABASE.Agility, ...HEROES_DATABASE.Intelligence, ...HEROES_DATABASE.Universal];
 
             for (const hero of allHeroes) {
                 const safeKey = getSafeDbKey(hero);
-                let abilitiesList = [];
-
-                if (CUSTOM_HERO_ABILITIES[hero]) {
-                    abilitiesList = CUSTOM_HERO_ABILITIES[hero];
-                } else {
-                    const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
-                    if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
-                        abilitiesList = openDotaHeroAbilities[apiHeroKey].abilities.slice(0, 4);
-                    }
-                }
+                let abilitiesList = CUSTOM_HERO_ABILITIES[hero] || [];
 
                 if (abilitiesList.length > 0) {
                     await db.ref(`hero_abilities/${safeKey}`).set(abilitiesList);
                     logToConsole(`[OK] Герой сохранен: ${hero} -> [${abilitiesList.join(', ')}]`);
                     count++;
                 } else {
-                    logToConsole(`[WARN] Не найдены способности для героя: ${hero}`);
+                    logToConsole(`[WARN] Не найдены способности в словаре для героя: ${hero}`);
                 }
             }
 
@@ -821,22 +789,17 @@
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
             
+            // 1. Проверяем данные из Firebase (заполненные через админку)
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
 
+            // 2. Проверяем встроенный локальный список CUSTOM_HERO_ABILITIES
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
 
-            const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
-            if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
-                const abs = openDotaHeroAbilities[apiHeroKey].abilities;
-                if (abs[index]) {
-                    return getAbilityIconUrl(abs[index]);
-                }
-            }
-
+            // 3. Запасной вариант (дефолтная иконка дерева талантов, если способность не найдена)
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
