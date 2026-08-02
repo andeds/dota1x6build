@@ -254,6 +254,34 @@
         }
         .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
+        /* Выбор способности */
+        .ability-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+            gap: 8px;
+            max-height: 350px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 5px;
+            background: #090c10;
+            border-radius: 6px;
+        }
+
+        .ability-picker-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .ability-picker-item:hover {
+            transform: scale(1.1);
+            border-color: var(--accent-orange);
+        }
+
         /* Консоль Админки */
         .console-wrapper {
             background: #000;
@@ -334,14 +362,14 @@
     <!-- Контейнер для Консоли Админа -->
     <div class="container" id="adminContainer" style="display: none;">
         <div class="build-card">
-            <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Консоль Администратора (andeds)</h2>
+            <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Консоль Администратора</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">
                 Команды: <code>/op &lt;логин/email&gt;</code>, <code>/deop &lt;логин/email&gt;</code>, <code>/adminlist</code>, <code>/clear</code>
             </p>
             
             <div class="console-wrapper">
                 <div class="console-logs" id="consoleLogs">
-                    <div class="console-log-item">[SYSTEM]: Добро пожаловать, главный администратор andeds!</div>
+                    <div class="console-log-item">[SYSTEM]: Панель управления администратора готова.</div>
                 </div>
                 <div class="console-input-group">
                     <input type="text" id="consoleInput" class="console-input" placeholder="Введите команду (например: /op user1)..." onkeydown="handleConsoleKey(event)">
@@ -445,7 +473,6 @@
         let authMode = 'login';
         let activeTab = 'main';
 
-        // Главный администратор по умолчанию — andeds
         let adminList = ["andeds"];
 
         const HEROES_DATABASE = {
@@ -490,7 +517,6 @@
             return name.replace(/['\s]/g, '_');
         }
 
-        // Проверка: является ли текущий юзер администратором
         function checkIsAdmin() {
             if (!currentUser) return false;
             const displayName = (currentUser.displayName || currentUser.email.split('@')[0]).toLowerCase();
@@ -988,7 +1014,7 @@
                         <div style="margin-top: 5px;">
                             <select onchange="if(this.value) { appendItemToInput(${sIdx}, this.value); this.value=''; }">
                                 <option value="">+ Добавить предмет из списка...</option>
-                                ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}">${item}</option>`).join('')}
+                                ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}</option>`).join('')}
                             </select>
                         </div>
                     </div>
