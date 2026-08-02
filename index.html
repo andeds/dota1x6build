@@ -463,15 +463,12 @@
         let currentUser = null;
         let authMode = 'login';
         let activeTab = 'main';
+        let isAdminUser = false;
 
         const MASTER_ADMIN_UID = "hnbWz45s9nYTRcbMv6leJ2gBVki2";
-        let adminList = [
-            MASTER_ADMIN_UID, 
-            "hnbWz45s9nYTRcbMv6leJ2gBVki2"
-        ];
 
         const HEROES_DATABASE = {
-            "Strength": ["Alchemist", "Axe", "Bristleback", "Cain", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
+            "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
             "Agility": ["Anti-Mage", "Bloodseeker", "Broodmother", "Drow Ranger", "Ember Spirit", "Hoodwink", "Juggernaut", "Monkey King", "Morphling", "Phantom Assassin", "Razor", "Shadow Fiend", "Slark", "Sniper", "Templar Assassin", "Terrorblade", "Troll Warlord"],
             "Intelligence": ["Crystal Maiden", "Invoker", "Leshrac", "Lina", "Muerta", "Puck", "Queen of Pain", "Skywrath Mage", "Tinker", "Witch Doctor", "Zeus"],
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
@@ -481,7 +478,6 @@
             "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
             "Bristleback": ["bristleback_viscous_nasal_goo", "bristleback_quill_spray", "bristleback_bristleback", "bristleback_warpath"],
-            "Cain": ["slark_dark_pact", "slark_pounce", "slark_essence_shift", "slark_shadow_dance"],
             "Centaur Warrunner": ["centaur_hoof_stomp", "centaur_double_edge", "centaur_return", "centaur_stampede"],
             "Huskar": ["huskar_inner_fire", "huskar_burning_spear", "huskar_berserkers_blood", "huskar_life_break"],
             "Legion Commander": ["legion_commander_overwhelming_odds", "legion_commander_press_the_attack", "legion_commander_moment_of_courage", "legion_commander_duel"],
@@ -557,8 +553,7 @@
         }
 
         function checkIsAdmin() {
-            if (!currentUser) return false;
-            return adminList.includes(currentUser.uid);
+            return isAdminUser;
         }
 
         async function loadAllAbilitiesFromOpenDota() {
@@ -600,22 +595,28 @@
                     <button class="auth-btn" onclick="logout()">Выйти</button>
                 `;
 
-                if (checkIsAdmin()) {
-                    adminTabBtn.style.display = 'inline-block';
-                } else {
-                    adminTabBtn.style.display = 'none';
-                }
+                db.ref(`admins/${user.uid}`).once('value').then(snapshot => {
+                    if (snapshot.val() === true || snapshot.val() === "true" || user.uid === MASTER_ADMIN_UID) {
+                        isAdminUser = true;
+                        adminTabBtn.style.display = 'inline-block';
+                    } else {
+                        isAdminUser = false;
+                        adminTabBtn.style.display = 'none';
+                    }
+                    renderBuild();
+                    if (activeTab === 'community') renderCommunityBuilds();
+                });
             } else {
                 currentUser = null;
+                isAdminUser = false;
                 panel.innerHTML = `
                     <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
                     <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
                 `;
                 adminTabBtn.style.display = 'none';
+                renderBuild();
+                if (activeTab === 'community') renderCommunityBuilds();
             }
-
-            renderBuild();
-            if (activeTab === 'community') renderCommunityBuilds();
         });
 
         function openAuthModal(mode) {
@@ -712,7 +713,7 @@
             if (event.key === 'Enter') executeCommand();
         }
 
-        function executeCommand() {
+        async function executeCommand() {
             if (!checkIsAdmin()) return;
             const inputEl = document.getElementById('consoleInput');
             const commandText = inputEl.value.trim();
@@ -724,35 +725,44 @@
             const cmd = parts[0].toLowerCase();
             const targetUid = parts[1] ? parts[1].trim() : null;
 
-            switch (cmd) {
-                case '/op':
-                    if (!targetUid) logToConsole('Ошибка: Укажите UID.', true);
-                    else if (adminList.includes(targetUid)) logToConsole('Уже админ.', true);
-                    else {
-                        adminList.push(targetUid);
-                        logToConsole(`SUCCESS: UID ${targetUid} добавлен в админы!`);
-                    }
-                    break;
-                case '/deop':
-                    if (!targetUid) logToConsole('Ошибка: Укажите UID.', true);
-                    else if (targetUid === MASTER_ADMIN_UID) logToConsole('Нельзя забрать права у Главного Администратора!', true);
-                    else {
-                        adminList = adminList.filter(uid => uid !== targetUid);
-                        logToConsole(`SUCCESS: Права у UID ${targetUid} отняты.`);
-                    }
-                    break;
-                case '/adminlist':
-                    logToConsole(`Админы:\n - ` + adminList.join('\n - '));
-                    break;
-                case '/myuid':
-                    if (currentUser) logToConsole(`Ваш UID: ${currentUser.uid}`);
-                    break;
-                case '/clear':
-                    document.getElementById('consoleLogs').innerHTML = '';
-                    break;
-                default:
-                    logToConsole(`Неизвестная команда "${cmd}".`, true);
-                    break;
+            try {
+                switch (cmd) {
+                    case '/op':
+                        if (!targetUid) {
+                            logToConsole('Ошибка: Укажите UID.', true);
+                        } else {
+                            await db.ref(`admins/${targetUid}`).set(true);
+                            logToConsole(`SUCCESS: UID ${targetUid} добавлен в админы в базе данных!`);
+                        }
+                        break;
+                    case '/deop':
+                        if (!targetUid) {
+                            logToConsole('Ошибка: Укажите UID.', true);
+                        } else if (targetUid === MASTER_ADMIN_UID) {
+                            logToConsole('Нельзя забрать права у Главного Администратора!', true);
+                        } else {
+                            await db.ref(`admins/${targetUid}`).remove();
+                            logToConsole(`SUCCESS: Права у UID ${targetUid} удалены.`);
+                        }
+                        break;
+                    case '/adminlist':
+                        const snap = await db.ref('admins').once('value');
+                        const adminsObj = snap.val() || {};
+                        const list = Object.keys(adminsObj);
+                        logToConsole(`Админы в базе:\n - ` + list.join('\n - '));
+                        break;
+                    case '/myuid':
+                        if (currentUser) logToConsole(`Ваш UID: ${currentUser.uid}`);
+                        break;
+                    case '/clear':
+                        document.getElementById('consoleLogs').innerHTML = '';
+                        break;
+                    default:
+                        logToConsole(`Неизвестная команда "${cmd}".`, true);
+                        break;
+                }
+            } catch (err) {
+                logToConsole(`Ошибка выполнения: ${err.message}`, true);
             }
         }
 
@@ -775,7 +785,6 @@
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
-        // Загружаем иконки способностей один раз и ставим слушатель
         db.ref('hero_abilities').on('value', (snapshot) => {
             HERO_ABILITIES_DATABASE = snapshot.val() || {};
             renderBuild();
@@ -1011,12 +1020,10 @@
                 HERO_ABILITIES_DATABASE[safeKey] = {};
             }
             
-            // Мгновенно обновляем интерфейс локально
             HERO_ABILITIES_DATABASE[safeKey][activeTalentId] = abName;
             closeAbilityEditor();
             renderBuild();
 
-            // Отправляем в Firebase
             db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
                 .then(() => {
                     console.log("✅ Иконка успешно сохранена в базу данных!");
