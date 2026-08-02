@@ -487,7 +487,6 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Полный базовый словарь дефолтных способностей для всех героев, чтобы иконки никогда не пропадали
         const CUSTOM_HERO_ABILITIES = {
             "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
@@ -572,7 +571,6 @@
             return adminList.includes(currentUser.uid);
         }
 
-        /* --- Загрузка способностей из OpenDota API --- */
         async function loadAllAbilitiesFromOpenDota() {
             try {
                 const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
@@ -603,7 +601,6 @@
         }
         loadAllAbilitiesFromOpenDota();
 
-        /* --- Авторизация --- */
         auth.onAuthStateChanged(async user => {
             const panel = document.getElementById("authPanel");
             const adminTabBtn = document.getElementById("tabAdminBtn");
@@ -702,7 +699,6 @@
             }
         });
 
-        /* --- Вкладки --- */
         function switchTab(tab) {
             if (tab === 'admin' && !checkIsAdmin()) {
                 alert("⛔ Доступ запрещен. У вас нет прав администратора.");
@@ -731,7 +727,6 @@
             openEditor();
         }
 
-        /* --- Админ консоль --- */
         function logToConsole(message, isError = false) {
             const logsEl = document.getElementById('consoleLogs');
             if (!logsEl) return;
@@ -803,7 +798,6 @@
             }
         }
 
-        /* --- Firebase Listeners --- */
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
             if (activeTab === 'main') renderBuild();
@@ -826,17 +820,14 @@
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
             
-            // 1. Приоритет: Firebase (папка hero_abilities)
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
             
-            // 2. Приоритет: Локальный словарь CUSTOM_HERO_ABILITIES
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
             
-            // 3. Заглушка
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
