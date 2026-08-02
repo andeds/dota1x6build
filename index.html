@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dota 1x6 — База Сборок</title>
     
-    <!-- Подключаем Firebase SDK через CDN (версия 8 с поддержкой классического JS) -->
+    <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -43,7 +43,9 @@
         .hero-btn {
             background: var(--panel-bg); border: 1px solid var(--border-color);
             color: var(--text-main); padding: 6px 12px; border-radius: 4px; cursor: pointer;
+            transition: all 0.2s ease;
         }
+        .hero-btn:hover { border-color: var(--accent-orange); }
         .hero-btn.active { background: var(--accent-orange); color: #000; font-weight: bold; }
 
         .container { max-width: 1200px; margin: 0 auto; }
@@ -55,9 +57,10 @@
         
         .talents-container { display: flex; gap: 8px; background: #090c10; padding: 5px; border-radius: 6px; border: 1px solid #1c2533; }
         .talent-icon {
-            width: 42px; height: 42px; border-radius: 4px;
+            width: 48px; height: 48px; border-radius: 4px;
             border: 2px solid #2a3546; background-size: cover; background-position: center;
             cursor: pointer; transition: all 0.2s ease; filter: brightness(0.6) grayscale(0.3);
+            background-color: #111;
         }
         .talent-icon:hover { filter: brightness(0.9); transform: scale(1.05); }
         .talent-icon.active { border-color: var(--accent-orange); filter: brightness(1.1) grayscale(0); box-shadow: 0 0 10px rgba(243, 156, 18, 0.9); }
@@ -68,26 +71,36 @@
         }
         .edit-btn:hover { background: #219150; }
 
-        .stages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; }
+        .stages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
         .stage-box {
             background: var(--panel-bg); border: 1px solid #1e2837;
             border-radius: 6px; padding: 12px; text-align: center;
         }
         .inventory-wrapper { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
         .inventory-grid {
-            display: grid; grid-template-columns: repeat(3, 50px);
-            grid-template-rows: repeat(2, 35px); gap: 4px; background: #090c10; padding: 4px;
+            display: grid; grid-template-columns: repeat(3, 52px);
+            grid-template-rows: repeat(2, 38px); gap: 4px; background: #090c10; padding: 4px;
+            border-radius: 4px;
         }
-        .item-slot { width: 50px; height: 35px; background: #11161d; border: 1px solid #1a222e; font-size: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center;}
+        .item-slot {
+            width: 52px; height: 38px; background: #11161d; border: 1px solid #1a222e;
+            font-size: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            border-radius: 2px; text-align: center; color: var(--text-muted);
+        }
         .item-slot img { width: 100%; height: 100%; object-fit: cover; }
-        .neutral-item { width: 35px; height: 35px; border-radius: 50%; background: #090c10; border: 1px solid #34495e; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+        .neutral-item {
+            width: 38px; height: 38px; border-radius: 50%; background: #090c10;
+            border: 1px solid #34495e; display: flex; align-items: center; justify-content: center;
+            font-size: 9px; overflow: hidden; color: var(--text-muted);
+        }
         .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 600px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 650px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; margin-bottom: 5px; color: var(--accent-orange); font-size: 0.9rem;}
         .form-group input { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
+        .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
@@ -97,7 +110,7 @@
 
     <header>
         <h1>Dota 1x6 — База Сборок</h1>
-        <p style="color: var(--text-muted);">Облачная система сборок на базе Firebase Realtime Database</p>
+        <p style="color: var(--text-muted);">Иконки всех героев и предметов подгружаются из CDN Dota 2</p>
     </header>
 
     <div class="category-section">
@@ -127,11 +140,10 @@
     </div>
 
     <script>
-        // Инициализация Firebase с вашими ключами
         const firebaseConfig = {
             apiKey: "AIzaSyAoDJiySpfKBu-CXBcdNIo0S-A5Bot05qc",
             authDomain: "dota1x6build.firebaseapp.com",
-            databaseURL: "https://dota1x6build-default-rtdb.europe-west1.firebasedatabase.app", 
+            databaseURL: "https://dota1x6build-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "dota1x6build",
             storageBucket: "dota1x6build.firebasestorage.app",
             messagingSenderId: "934335136834",
@@ -143,66 +155,54 @@
         const db = firebase.database();
 
         const HEROES_DATABASE = {
-            "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
+            "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
             "Agility": ["Anti-Mage", "Bloodseeker", "Broodmother", "Drow Ranger", "Ember Spirit", "Hoodwink", "Juggernaut", "Monkey King", "Morphling", "Phantom Assassin", "Razor", "Shadow Fiend", "Slark", "Sniper", "Templar Assassin", "Terrorblade", "Troll Warlord"],
             "Intelligence": ["Crystal Maiden", "Invoker", "Leshrac", "Lina", "Muerta", "Puck", "Queen of Pain", "Skywrath Mage", "Tinker", "Witch Doctor", "Zeus"],
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        const TALENT_ICONS = {
-            "Shadow Fiend": [
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_shadowraze1.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_necromastery.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_dark_lord.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_requiem.png"
-            ],
-            "Juggernaut": [
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_blade_fury.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_healing_ward.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_blade_dance.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_omni_slash.png"
-            ],
-            "Wraith King": [
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_hellfire_blast.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_vampiric_aura.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_mortal_strike.png",
-                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_reincarnation.png"
-            ]
+        // Сопоставление имён героев и их способностей из Dota 2 CDN
+        const HERO_ABILITIES = {
+            "Shadow Fiend": ["nevermore_shadowraze1", "nevermore_necromastery", "nevermore_dark_lord", "nevermore_requiem"],
+            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omni_slash"],
+            "Wraith King": ["skeleton_king_hellfire_blast", "skeleton_king_vampiric_aura", "skeleton_king_mortal_strike", "skeleton_king_reincarnation"],
+            "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
+            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
+            "Sven": ["sven_storm_bolt", "sven_great_cleave", "sven_warcry", "sven_gods_strength"],
+            "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
+            "Drow Ranger": ["drow_ranger_frost_arrows", "drow_ranger_gust", "drow_ranger_multishot", "drow_ranger_marksmanship"],
+            "Invoker": ["invoker_quas", "invoker_wex", "invoker_exort", "invoker_invoke"],
+            "Zeus": ["zuus_arc_lightning", "zuus_lightning_bolt", "zuus_static_field", "zuus_thundergods_wrath"]
         };
 
-        const DEFAULT_TALENT_ICONS = [
-            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg",
-            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg",
-            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg",
-            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg"
-        ];
+        // Функция генерации URL для иконки способности
+        function getAbilityIconUrl(hero, index) {
+            if (HERO_ABILITIES[hero] && HERO_ABILITIES[hero][index]) {
+                return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${HERO_ABILITIES[hero][index]}.png`;
+            }
+            // Стандартный плейсхолдер таланта, если способность не задана вручную
+            return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
+        }
 
-        const ITEM_IMAGES = {
-            "wraith_band": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/wraith_band.png",
-            "bracer": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/bracer.png",
-            "null_talisman": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/null_talisman.png",
-            "magic_wand": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/magic_wand.png",
-            "bottle": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/bottle.png",
-            "power_treads": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/power_treads.png",
-            "phase_boots": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/phase_boots.png",
-            "kaya": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/kaya.png",
-            "black_king_bar": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/black_king_bar.png",
-            "blink": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/blink.png",
-            "satanic": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/satanic.png"
-        };
+        // Функция генерации URL предмета из Valve CDN
+        function getItemIconUrl(itemName) {
+            if (!itemName) return '';
+            const cleanName = itemName.trim().toLowerCase().replace(/\s+/g, '_').replace(/'/g, '');
+            return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/${cleanName}.png`;
+        }
 
         const DEFAULT_STAGES = [
-            { "time": "Начало игры ~4мин", "items": ["bracer", "magic_wand", "bottle"], "neutral": "seeds_of_serenity" },
-            { "time": "Ранняя игра ~12мин", "items": ["power_treads", "kaya", "magic_wand"], "neutral": "occult_orb" },
-            { "time": "Середина игры ~25мин", "items": ["power_treads", "black_king_bar", "blink"], "neutral": "penta_edged_sword" },
-            { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "blink"], "neutral": "apex" }
+            { "time": "Начало игры ~4мин", "items": ["tango", "bracer", "magic_wand"], "neutral": "seeds_of_serenity" },
+            { "time": "Ранняя игра ~12мин", "items": ["power_treads", "kaya", "black_king_bar"], "neutral": "occult_orb" },
+            { "time": "Середина игры ~25мин", "items": ["power_treads", "black_king_bar", "blink", "desolator"], "neutral": "penta_edged_sword" },
+            { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "swift_blink", "butterfly", "daedalus"], "neutral": "apex" }
         ];
 
         let BUILDS_DATABASE = {};
         let currentHero = "Shadow Fiend";
         let activeTalentId = 0;
 
-        // Синхронизация данных в реальном времени с Firebase
+        // Синхронизация с Firebase в реальном времени
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
             renderBuild();
@@ -245,7 +245,6 @@
         function renderBuild() {
             const container = document.getElementById("buildsContainer");
             const stagesData = getCurrentStages();
-            const icons = TALENT_ICONS[currentHero] || DEFAULT_TALENT_ICONS;
 
             let html = `
                 <div class="build-card">
@@ -254,13 +253,16 @@
                             <h2>${currentHero.toUpperCase()}</h2>
                         </div>
                         <div class="talents-container">
-                            ${icons.map((iconUrl, idx) => `
-                                <div class="talent-icon ${idx === activeTalentId ? 'active' : ''}"
-                                     style="background-image: url('${iconUrl}')"
-                                     title="Способность #${idx + 1}"
-                                     onclick="selectTalent(${idx})">
-                                </div>
-                            `).join('')}
+                            ${[0, 1, 2, 3].map(idx => {
+                                const iconUrl = getAbilityIconUrl(currentHero, idx);
+                                return `
+                                    <div class="talent-icon ${idx === activeTalentId ? 'active' : ''}"
+                                         style="background-image: url('${iconUrl}')"
+                                         title="Способность #${idx + 1}"
+                                         onclick="selectTalent(${idx})">
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                         <button class="edit-btn" onclick="openEditor()">✏️ Изменить сборку</button>
                     </div>
@@ -270,16 +272,21 @@
                             let itemSlotsHtml = '';
                             for (let i = 0; i < 6; i++) {
                                 const itemKey = stage.items ? stage.items[i] : null;
-                                const imgSrc = itemKey && ITEM_IMAGES[itemKey] ? ITEM_IMAGES[itemKey] : '';
-                                itemSlotsHtml += `<div class="item-slot">${imgSrc ? `<img src="${imgSrc}">` : (itemKey || '')}</div>`;
+                                const imgSrc = getItemIconUrl(itemKey);
+                                itemSlotsHtml += `
+                                    <div class="item-slot">
+                                        ${itemKey ? `<img src="${imgSrc}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${itemKey}';" title="${itemKey}">` : ''}
+                                    </div>`;
                             }
-                            const neutralImg = stage.neutral && ITEM_IMAGES[stage.neutral] ? ITEM_IMAGES[stage.neutral] : '';
+                            const neutralImg = getItemIconUrl(stage.neutral);
 
                             return `
                                 <div class="stage-box">
                                     <div class="inventory-wrapper">
                                         <div class="inventory-grid">${itemSlotsHtml}</div>
-                                        <div class="neutral-item">${neutralImg ? `<img src="${neutralImg}">` : (stage.neutral || '')}</div>
+                                        <div class="neutral-item">
+                                            ${stage.neutral ? `<img src="${neutralImg}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${stage.neutral}';" title="${stage.neutral}">` : ''}
+                                        </div>
                                     </div>
                                     <div style="font-size:0.85rem; font-weight:bold;">${stage.time}</div>
                                 </div>
@@ -294,21 +301,23 @@
         function openEditor() {
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
-            document.getElementById("modalTitle").innerText = `Редактирование: ${currentHero} (Талант #${activeTalentId + 1})`;
+            document.getElementById("modalTitle").innerText = `Редактирование: ${currentHero} (Способность #${activeTalentId + 1})`;
             
             container.innerHTML = stagesData.map((stage, sIdx) => `
-                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px;">
+                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
                     <div class="form-group">
                         <label>Этап / Тайминг</label>
                         <input type="text" id="stage_time_${sIdx}" value="${stage.time}">
                     </div>
                     <div class="form-group">
-                        <label>Предметы (через запятую, до 6 шт):</label>
+                        <label>Предметы (до 6 шт, через запятую):</label>
                         <input type="text" id="stage_items_${sIdx}" value="${stage.items ? stage.items.join(', ') : ''}">
+                        <div class="help-text">Пишите названия предметов по-английски, например: blink, black_king_bar, desolator, satanic, power_treads</div>
                     </div>
                     <div class="form-group">
                         <label>Нейтральный предмет:</label>
                         <input type="text" id="stage_neutral_${sIdx}" value="${stage.neutral || ''}">
+                        <div class="help-text">Например: seeds_of_serenity, occult_orb, apex, penta_edged_sword</div>
                     </div>
                 </div>
             `).join('');
@@ -333,14 +342,13 @@
                 newStages.push({ time, items, neutral });
             }
 
-            // Отправка в облако Firebase
             const safeHeroKey = currentHero.replace(/\s+/g, '_');
             db.ref(`builds/${safeHeroKey}/${activeTalentId}`).set(newStages, (error) => {
                 if (error) {
-                    alert("❌ Ошибка записи: " + error.message);
+                    alert("❌ Ошибка сохранения: " + error.message);
                 } else {
                     closeEditor();
-                    alert("✅ Сборка успешно сохранена в облаке!");
+                    alert("✅ Сборка с иконками успешно сохранена!");
                 }
             });
         });
