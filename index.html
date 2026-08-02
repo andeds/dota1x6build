@@ -100,7 +100,6 @@
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; margin-bottom: 5px; color: var(--accent-orange); font-size: 0.9rem;}
         .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
-        .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
@@ -110,7 +109,7 @@
 
     <header>
         <h1>Dota 1x6 — База Сборок</h1>
-        <p style="color: var(--text-muted);">Иконки всех героев и предметов загружаются в реальном времени из Dota 2 API</p>
+        <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2</p>
     </header>
 
     <div class="category-section">
@@ -161,7 +160,21 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Популярные предметы Dota 2 для быстрой вставки из списка
+        // Ручная кастомная раскладка под Dota 1x6
+        const CUSTOM_HERO_ABILITIES = {
+            "Morphling": ["morphling_waveform", "morphling_adaptive_strike_agi", "morphling_morph_agi", "morphling_replicate"],
+            "Troll Warlord": ["troll_warlord_berserkers_rage", "troll_warlord_whirling_axes_ranged", "troll_warlord_fervor", "troll_warlord_battle_trance"],
+            "Shadow Fiend": ["nevermore_shadowraze1", "nevermore_necromastery", "nevermore_dark_lord", "nevermore_requiem"],
+            "Monkey King": ["monkey_king_boundless_strike", "monkey_king_tree_dance", "monkey_king_jingu_mastery", "monkey_king_wukongs_command"],
+            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omnislash"],
+            "Hoodwink": ["hoodwink_acorn_shot", "hoodwink_bushwhack", "hoodwink_scurry", "hoodwink_sharpshooter"],
+            "Drow Ranger": ["drow_ranger_frost_arrows", "drow_ranger_silence", "drow_ranger_multishot", "drow_ranger_marksmanship"],
+            "Broodmother": ["broodmother_spawn_spiderlings", "broodmother_spin_web", "broodmother_incapacitating_bite", "broodmother_insatiable_hunger"],
+            "Bloodseeker": ["bloodseeker_bloodrage", "bloodseeker_blood_bath", "bloodseeker_thirst", "bloodseeker_rupture"],
+            "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
+            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"]
+        };
+
         const POPULAR_ITEMS = [
             "tango", "faerie_fire", "healing_salve", "clarity", "quelling_blade", "circlet", "gauntlets", "slippers", "mantle", "branches", "magic_wand", "bracer", "wraith_band", "null_talisman", "bottle",
             "boots", "power_treads", "phase_boots", "arcane_boots", "tranquil_boots", "travel_boots",
@@ -170,13 +183,13 @@
             "satanic", "butterfly", "daedalus", "monkey_king_bar", "abyssal_blade", "bloodthorn", "heart", "assault", "shivas_guard", "sphere", "refresher", "octarine_core", "aghanims_scepter"
         ];
 
-        let heroAbilitiesMap = {};
+        let apiAbilitiesMap = {};
         let BUILDS_DATABASE = {};
-        let currentHero = "Shadow Fiend";
+        let currentHero = "Morphling";
         let activeTalentId = 0;
 
-        // Загрузка способностей всех героев из OpenDota API
-        async function loadHeroAbilities() {
+        // Резервная подгрузка способностей для ВСЕХ остальныx героев через OpenDota
+        async function loadFallbackHeroAbilities() {
             try {
                 const res = await fetch("https://api.opendota.com/api/heroStats");
                 const heroes = await res.json();
@@ -186,23 +199,29 @@
 
                 heroes.forEach(h => {
                     const name = h.localized_name;
-                    const heroKey = h.name; // например, npc_dota_hero_nevermore
+                    const heroKey = h.name;
                     if (capabilities[heroKey] && capabilities[heroKey].abilities) {
-                        // Берём первые 4 активные способности героя
-                        heroAbilitiesMap[name] = capabilities[heroKey].abilities.filter(a => a !== "generic_hidden").slice(0, 4);
+                        apiAbilitiesMap[name] = capabilities[heroKey].abilities.filter(a => a !== "generic_hidden").slice(0, 4);
                     }
                 });
                 renderBuild();
             } catch (e) {
-                console.log("Загрузка API способностей...", e);
+                console.log("Ошибка API:", e);
             }
         }
 
         function getAbilityIconUrl(hero, index) {
-            if (heroAbilitiesMap[hero] && heroAbilitiesMap[hero][index]) {
-                const abName = heroAbilitiesMap[hero][index];
+            // 1. Приоритет: кастомная раскладка Dota 1x6
+            if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
+                const abName = CUSTOM_HERO_ABILITIES[hero][index];
                 return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
             }
+            // 2. Фоллбек: стандартные иконки с OpenDota API
+            if (apiAbilitiesMap[hero] && apiAbilitiesMap[hero][index]) {
+                const abName = apiAbilitiesMap[hero][index];
+                return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
+            }
+            // 3. Заглушка
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
@@ -219,7 +238,6 @@
             { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "swift_blink", "butterfly", "daedalus"], "neutral": "apex" }
         ];
 
-        // Синхронизация с Firebase в реальном времени
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
             renderBuild();
@@ -340,7 +358,7 @@
                         <label>Предметы (до 6 шт):</label>
                         <input type="text" id="stage_items_${sIdx}" value="${stage.items ? stage.items.join(', ') : ''}">
                         
-                        <div style="margin-top: 5px; display: flex; gap: 5px;">
+                        <div style="margin-top: 5px;">
                             <select onchange="if(this.value) { appendItemToInput(${sIdx}, this.value); this.value=''; }">
                                 <option value="">+ Добавить предмет из списка...</option>
                                 ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}</option>`).join('')}
@@ -386,7 +404,7 @@
         });
 
         renderNavigation();
-        loadHeroAbilities();
+        loadFallbackHeroAbilities();
     </script>
 </body>
 </html>
