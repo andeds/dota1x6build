@@ -55,7 +55,6 @@
         }
         .auth-btn:hover { background: var(--accent-orange); color: #000; }
 
-        /* Вкладки навигации */
         .tab-navigation {
             max-width: 1200px;
             margin: 0 auto 20px;
@@ -254,7 +253,6 @@
         }
         .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
-        /* Выбор способности */
         .ability-picker-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
@@ -282,7 +280,6 @@
             border-color: var(--accent-orange);
         }
 
-        /* Консоль Админки */
         .console-wrapper {
             background: #000;
             color: #00ff00;
@@ -334,7 +331,6 @@
         </div>
     </header>
 
-    <!-- Вкладки навигации -->
     <div class="tab-navigation">
         <div class="tabs-group">
             <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">Главная база</button>
@@ -344,7 +340,6 @@
         <button class="create-build-action-btn" onclick="triggerCreateBuild()">➕ Создать сборку</button>
     </div>
 
-    <!-- Раздел выбора героя -->
     <div class="category-section" id="heroCategorySection">
         <div class="attr-title str">🔴 Strength</div>
         <div class="hero-list" id="str-list"></div>
@@ -356,10 +351,8 @@
         <div class="hero-list" id="uni-list"></div>
     </div>
 
-    <!-- Основной контейнер сборок -->
     <div class="container" id="buildsContainer">Загрузка данных...</div>
 
-    <!-- Контейнер для Консоли Админа -->
     <div class="container" id="adminContainer" style="display: none;">
         <div class="build-card">
             <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Консоль Администратора</h2>
@@ -379,7 +372,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно Авторизации / Регистрации -->
     <div class="modal" id="authModal">
         <div class="modal-content" style="max-width: 420px;">
             <h3 id="authModalTitle" style="margin-bottom: 15px;">Авторизация</h3>
@@ -405,7 +397,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно для сборки предметов -->
     <div class="modal" id="editModal">
         <div class="modal-content">
             <h3 id="modalTitle" style="margin-bottom: 15px;">Редактирование сборки</h3>
@@ -438,7 +429,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно выбора иконки способности -->
     <div class="modal" id="editAbilityModal">
         <div class="modal-content">
             <h3 style="margin-bottom: 10px;">Выберите иконку способности</h3>
@@ -575,25 +565,20 @@
             try {
                 const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
                 const data = await res.json();
-                
                 const fullSet = new Set();
-                
                 Object.values(data).forEach(heroObj => {
                     if (heroObj && heroObj.abilities) {
                         heroObj.abilities.forEach(ab => fullSet.add(ab));
                     }
                 });
-
                 Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
                 Object.values(HERO_ABILITIES_DATABASE).forEach(heroObj => {
                     if (typeof heroObj === 'object') {
                         Object.values(heroObj).forEach(ab => { if(ab) fullSet.add(ab); });
                     }
                 });
-
                 allAbilitiesList = Array.from(fullSet);
             } catch (e) {
-                console.warn("[API]: Не удалось загрузить constants/hero_abilities, используем локальные списки.", e);
                 const fullSet = new Set();
                 Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
                 allAbilitiesList = Array.from(fullSet);
@@ -665,37 +650,26 @@
                     alert("⚠️ Пожалуйста, укажите ваш никнейм!");
                     return;
                 }
-
                 try {
                     const nickRef = db.ref(`usernames/${nickname}`);
                     const snapshot = await nickRef.once('value');
-                    
                     if (snapshot.exists()) {
-                        alert(`❌ Ошибка: Логин "${nickname}" уже занят другим пользователем!`);
+                        alert(`❌ Ошибка: Логин "${nickname}" уже занят!`);
                         return;
                     }
-
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                     const user = userCredential.user;
-
                     await nickRef.set({ uid: user.uid, email: email });
                     await user.updateProfile({ displayName: nickname });
-
                     closeAuthModal();
                     alert("✅ Регистрация успешна!");
-
                 } catch (error) {
                     alert("❌ Ошибка регистрации: " + error.message);
                 }
-
             } else {
                 auth.signInWithEmailAndPassword(email, password)
-                    .then(() => {
-                        closeAuthModal();
-                    })
-                    .catch(error => {
-                        alert("❌ Ошибка входа: " + error.message);
-                    });
+                    .then(() => closeAuthModal())
+                    .catch(error => alert("❌ Ошибка входа: " + error.message));
             }
         });
 
@@ -713,17 +687,12 @@
             document.getElementById("buildsContainer").style.display = tab === 'admin' ? 'none' : 'block';
             document.getElementById("adminContainer").style.display = tab === 'admin' ? 'block' : 'none';
 
-            if (tab === 'main') {
-                renderBuild();
-            } else if (tab === 'community') {
-                renderCommunityBuilds();
-            }
+            if (tab === 'main') renderBuild();
+            else if (tab === 'community') renderCommunityBuilds();
         }
 
         function triggerCreateBuild() {
-            if (activeTab === 'community' || activeTab === 'admin') {
-                switchTab('main');
-            }
+            if (activeTab === 'community' || activeTab === 'admin') switchTab('main');
             openEditor();
         }
 
@@ -733,10 +702,8 @@
             const item = document.createElement('div');
             item.className = 'console-log-item';
             if (isError) item.style.color = '#ff4d4d';
-            
             const time = new Date().toLocaleTimeString();
             item.innerText = `[${time}] ${message}`;
-            
             logsEl.appendChild(item);
             logsEl.scrollTop = logsEl.scrollHeight;
         }
@@ -808,8 +775,8 @@
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
-        // Слушаем изменения иконок один раз при инициализации, а не на каждый клик рендером
-        db.ref('hero_abilities').once('value').then((snapshot) => {
+        // Загружаем иконки способностей один раз и ставим слушатель
+        db.ref('hero_abilities').on('value', (snapshot) => {
             HERO_ABILITIES_DATABASE = snapshot.val() || {};
             renderBuild();
         });
@@ -820,15 +787,12 @@
 
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
-            
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
-            
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
-            
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
@@ -1009,7 +973,7 @@
 
         function openAbilityEditor() {
             if (!checkIsAdmin()) {
-                alert("⛔ Доступно только администраторам!");
+                alert("⛔ Доступно только администраторам! Убедитесь, что вы авторизованы и ваш UID добавлен в список администраторов.");
                 return;
             }
             document.getElementById("abilitySearchInput").value = "";
@@ -1024,7 +988,6 @@
         function filterAbilityPicker() {
             const query = document.getElementById("abilitySearchInput").value.trim().toLowerCase();
             const grid = document.getElementById("abilityPickerGrid");
-            
             const filtered = allAbilitiesList.filter(ab => ab.toLowerCase().includes(query));
 
             grid.innerHTML = filtered.map(ab => `
@@ -1037,21 +1000,30 @@
         }
 
         function selectAbilityIcon(abName) {
-            if (!checkIsAdmin()) return;
+            if (!checkIsAdmin()) {
+                alert("⛔ Ошибка: у вас нет прав администратора для изменения иконок.");
+                return;
+            }
+
             const safeKey = getSafeDbKey(currentHero);
             
             if (!HERO_ABILITIES_DATABASE[safeKey]) {
                 HERO_ABILITIES_DATABASE[safeKey] = {};
             }
-            // Мгновенно обновляем локально и закрываем окно, не дожидаясь сетевой задержки
-            HERO_ABILITIES_DATABASE[safeKey][activeTalentId] = abName;
             
+            // Мгновенно обновляем интерфейс локально
+            HERO_ABILITIES_DATABASE[safeKey][activeTalentId] = abName;
             closeAbilityEditor();
             renderBuild();
 
+            // Отправляем в Firebase
             db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
+                .then(() => {
+                    console.log("✅ Иконка успешно сохранена в базу данных!");
+                })
                 .catch(error => {
-                    alert("❌ Ошибка сохранения иконки: " + error.message);
+                    alert("❌ Ошибка сохранения иконки в базу данных: " + error.message);
+                    console.error("Firebase write error:", error);
                 });
         }
 
