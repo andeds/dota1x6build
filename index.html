@@ -364,7 +364,7 @@
         <div class="build-card">
             <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Консоль Администратора</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">
-                Команды: <code>/op &lt;логин/email&gt;</code>, <code>/deop &lt;логин/email&gt;</code>, <code>/adminlist</code>, <code>/clear</code>
+                Команды: <code>/op &lt;UID&gt;</code>, <code>/deop &lt;UID&gt;</code>, <code>/adminlist</code>, <code>/myuid</code>, <code>/clear</code>
             </p>
             
             <div class="console-wrapper">
@@ -372,7 +372,7 @@
                     <div class="console-log-item">[SYSTEM]: Панель управления администратора готова.</div>
                 </div>
                 <div class="console-input-group">
-                    <input type="text" id="consoleInput" class="console-input" placeholder="Введите команду (например: /op user1)..." onkeydown="handleConsoleKey(event)">
+                    <input type="text" id="consoleInput" class="console-input" placeholder="Введите команду (например: /op UID)..." onkeydown="handleConsoleKey(event)">
                     <button class="console-btn" onclick="executeCommand()">Выполнить</button>
                 </div>
             </div>
@@ -473,7 +473,9 @@
         let authMode = 'login';
         let activeTab = 'main';
 
-        let adminList = ["andeds"];
+        // 🔴 Главный администратор (Ваш UID)
+        const MASTER_ADMIN_UID = "s3avMuug30g7CbpyaN6BL8actLs2";
+        let adminList = [MASTER_ADMIN_UID];
 
         const HEROES_DATABASE = {
             "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
@@ -517,11 +519,10 @@
             return name.replace(/['\s]/g, '_');
         }
 
+        // Проверка строго по UID
         function checkIsAdmin() {
             if (!currentUser) return false;
-            const displayName = (currentUser.displayName || currentUser.email.split('@')[0]).toLowerCase();
-            const email = currentUser.email ? currentUser.email.toLowerCase() : '';
-            return adminList.some(adm => adm.toLowerCase() === displayName || adm.toLowerCase() === email);
+            return adminList.includes(currentUser.uid);
         }
 
         /* --- Авторизация --- */
@@ -539,7 +540,7 @@
 
                 if (checkIsAdmin()) {
                     adminTabBtn.style.display = 'inline-block';
-                    logToConsole(`[AUTH]: Авторизован администратор ${displayName}`);
+                    logToConsole(`[AUTH]: Авторизован администратор ${displayName} (UID: ${user.uid})`);
                 } else {
                     adminTabBtn.style.display = 'none';
                 }
@@ -657,35 +658,43 @@
 
             const parts = commandText.split(' ');
             const cmd = parts[0].toLowerCase();
-            const arg = parts[1] ? parts[1].toLowerCase() : null;
+            const targetUid = parts[1] ? parts[1].trim() : null;
 
             switch (cmd) {
                 case '/op':
-                    if (!arg) {
-                        logToConsole('Ошибка: Укажите логин/email. Пример: /op miracle', true);
-                    } else if (adminList.includes(arg)) {
-                        logToConsole(`Пользователь ${arg} уже админ.`, true);
+                    if (!targetUid) {
+                        logToConsole('Ошибка: Укажите UID пользователя. Пример: /op 8xKzL39...', true);
+                    } else if (adminList.includes(targetUid)) {
+                        logToConsole(`Пользователь с UID ${targetUid} уже является админом.`, true);
                     } else {
-                        adminList.push(arg);
-                        logToConsole(`SUCCESS: Пользователю ${arg} успешно выданы права администратора!`);
+                        adminList.push(targetUid);
+                        logToConsole(`SUCCESS: UID ${targetUid} успешно добавлен в список администраторов!`);
                     }
                     break;
 
                 case '/deop':
-                    if (!arg) {
-                        logToConsole('Ошибка: Укажите логин/email. Пример: /deop miracle', true);
-                    } else if (arg === 'andeds') {
-                        logToConsole('Ошибка: Нельзя забрать права у главного администратора andeds!', true);
-                    } else if (!adminList.includes(arg)) {
-                        logToConsole(`Пользователь ${arg} не найден в списке админов.`, true);
+                    if (!targetUid) {
+                        logToConsole('Ошибка: Укажите UID пользователя. Пример: /deop 8xKzL39...', true);
+                    } else if (targetUid === MASTER_ADMIN_UID) {
+                        logToConsole('Ошибка: Нельзя забрать права у Главного Администратора!', true);
+                    } else if (!adminList.includes(targetUid)) {
+                        logToConsole(`UID ${targetUid} не найден в списке админов.`, true);
                     } else {
-                        adminList = adminList.filter(user => user !== arg);
-                        logToConsole(`SUCCESS: Права администратора у ${arg} отняты.`);
+                        adminList = adminList.filter(uid => uid !== targetUid);
+                        logToConsole(`SUCCESS: Права администратора у UID ${targetUid} отняты.`);
                     }
                     break;
 
                 case '/adminlist':
-                    logToConsole(`Текущие администраторы:\n - ` + adminList.join('\n - '));
+                    logToConsole(`Список UID администраторов:\n - ` + adminList.join('\n - '));
+                    break;
+
+                case '/myuid':
+                    if (currentUser) {
+                        logToConsole(`Ваш UID: ${currentUser.uid}`);
+                    } else {
+                        logToConsole('Вы не авторизованы.', true);
+                    }
                     break;
 
                 case '/clear':
@@ -693,7 +702,7 @@
                     break;
 
                 default:
-                    logToConsole(`Неизвестная команда "${cmd}". Доступные: /op, /deop, /adminlist, /clear`, true);
+                    logToConsole(`Неизвестная команда "${cmd}". Доступные: /op <UID>, /deop <UID>, /adminlist, /myuid, /clear`, true);
                     break;
             }
         }
