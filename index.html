@@ -326,7 +326,7 @@
     <header>
         <div>
             <h1>Dota 1x6 — База Сборок</h1>
-            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2 (Каин учтен)[cite: 4]</p>
+            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2</p>
         </div>
         <div class="user-auth-panel" id="authPanel">
             <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
@@ -501,7 +501,8 @@
             "Bloodseeker": ["bloodseeker_bloodrage", "bloodseeker_blood_bath", "bloodseeker_thirst", "bloodseeker_rupture"],
             "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
             "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
-            "Nature's Prophet": ["furion_sprout", "furion_teleportation", "furion_force_of_nature", "furion_wrath_of_nature"]
+            "Nature's Prophet": ["furion_sprout", "furion_teleportation", "furion_force_of_nature", "furion_wrath_of_nature"],
+            "Enigma": ["enigma_malefice", "enigma_demonic_conversion", "enigma_midnight_pulse", "enigma_black_hole"]
         };
 
         const POPULAR_ITEMS = [
@@ -512,7 +513,6 @@
             "satanic", "butterfly", "daedalus", "monkey_king_bar", "abyssal_blade", "bloodthorn", "heart", "assault", "shivas_guard", "sphere", "refresher", "octarine_core", "aghanims_scepter"
         ];
 
-        let apiAbilitiesMap = {};
         let allAbilitiesList = [];
         let BUILDS_DATABASE = {};
         let PLAYER_BUILDS_DATABASE = {};
@@ -539,7 +539,6 @@
 
                 currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
-                console.log(`[AUTH INFO]: Пользователь вошел в систему -> Email: ${user.email}, UID: ${user.uid}, Ник: ${displayName}`);
                 
                 panel.innerHTML = `
                     <span style="color: var(--accent-orange); font-weight: bold;">👤 ${displayName}</span>
@@ -553,10 +552,7 @@
                     adminTabBtn.style.display = 'none';
                 }
             } else {
-                console.log("[AUTH INFO]: Сессия пользователя завершена (выход или не авторизован)");
                 currentUser = null;
-                sessionStorage.removeItem("relogin_required");
-                
                 panel.innerHTML = `
                     <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
                     <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
@@ -570,7 +566,6 @@
 
         function openAuthModal(mode) {
             authMode = mode;
-            console.log(`[UI LOG]: Открытие модального окна авторизации в режиме: ${mode}`);
             const nickGroup = document.getElementById("authNicknameGroup");
             if (nickGroup) {
                 nickGroup.style.display = mode === 'register' ? 'block' : 'none';
@@ -581,12 +576,10 @@
         }
 
         function closeAuthModal() {
-            console.log("[UI LOG]: Закрытие модального окна авторизации");
             document.getElementById("authModal").style.display = 'none';
         }
 
         function logout() {
-            console.log("[AUTH LOG]: Пользователь нажал кнопку выхода");
             auth.signOut().then(() => {
                 if (activeTab === 'admin') switchTab('main');
             });
@@ -601,11 +594,6 @@
             if (authMode === 'register') {
                 if (!nickname) {
                     alert("⚠️ Пожалуйста, укажите ваш никнейм!");
-                    return;
-                }
-
-                if (nickname === "andeds") {
-                    alert("❌ Ошибка регистрации: Этот логин (andeds) уже занят! Пожалуйста, выберите другой.");
                     return;
                 }
 
@@ -649,7 +637,6 @@
                 return;
             }
             activeTab = tab;
-            console.log(`[UI LOG]: Переключение вкладки на -> ${tab}`);
             document.getElementById("tabMainBtn").classList.toggle("active", tab === 'main');
             document.getElementById("tabCommunityBtn").classList.toggle("active", tab === 'community');
             document.getElementById("tabAdminBtn").classList.toggle("active", tab === 'admin');
@@ -772,51 +759,20 @@
 
         db.ref('hero_abilities').on('value', (snapshot) => {
             HERO_ABILITIES_DATABASE = snapshot.val() || {};
+            
+            // Заполняем общий список доступных иконок для модального окна выбора
+            const fullSet = new Set();
+            Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
+            Object.values(HERO_ABILITIES_DATABASE).forEach(heroObj => {
+                if (typeof heroObj === 'object') {
+                    Object.values(heroObj).forEach(ab => { if(ab) fullSet.add(ab); });
+                }
+            });
+            fullSet.add("enigma_black_hole");
+            allAbilitiesList = Array.from(fullSet);
+
             if (activeTab === 'main') renderBuild();
         });
-
-        async function loadFallbackHeroAbilities() {
-            try {
-                const res = await fetch("https://api.opendota.com/api/heroStats");
-                const heroes = await res.json();
-                
-                const capabilitiesRes = await fetch("https://api.opendota.com/api/constants/hero_abilities");
-                const capabilities = await capabilitiesRes.json();
-
-                const abilitiesInfoRes = await fetch("https://api.opendota.com/api/constants/abilities");
-                const abilitiesInfo = await abilitiesInfoRes.json();
-
-                const fullSet = new Set();
-
-                heroes.forEach(h => {
-                    const name = h.localized_name;
-                    const heroKey = h.name;
-
-                    if (capabilities[heroKey] && capabilities[heroKey].abilities) {
-                        const realAbilities = capabilities[heroKey].abilities.filter(ab => {
-                            if (ab === "generic_hidden" || ab.includes("special_bonus")) return false;
-                            const info = abilitiesInfo[ab];
-                            return info && info.behavior;
-                        });
-
-                        if (!apiAbilitiesMap[name]) apiAbilitiesMap[name] = [];
-                        
-                        realAbilities.slice(0, 4).forEach((abName, idx) => {
-                            apiAbilitiesMap[name][idx] = abName;
-                        });
-
-                        realAbilities.forEach(a => fullSet.add(a));
-                    }
-                });
-
-                fullSet.add("enigma_black_hole");
-
-                allAbilitiesList = Array.from(fullSet);
-                renderBuild();
-            } catch (e) {
-                console.error("[API ERROR]:", e);
-            }
-        }
 
         function getAbilityIconUrl(abName) {
             return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
@@ -825,18 +781,17 @@
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
             
-            // 1. Приоритет базы данных Firebase (выбор через админку на сайте)
+            // 1. Абсолютный приоритет: данные из Firebase (node hero_abilities)
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
-            // 2. Локальный словарь кастомных героев
+            
+            // 2. Второй приоритет: локальный словарь кастомных способностей
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
-            // 3. OpenDota API в последнюю очередь
-            if (apiAbilitiesMap[hero] && apiAbilitiesMap[hero][index]) {
-                return getAbilityIconUrl(apiAbilitiesMap[hero][index]);
-            }
+            
+            // 3. Заглушка
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
@@ -1167,7 +1122,6 @@
         });
 
         renderNavigation();
-        loadFallbackHeroAbilities();
     </script>
 </body>
 </html>
