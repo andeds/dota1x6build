@@ -248,13 +248,13 @@
         </div>
     </header>
 
-    <!-- Вкладки верхнего уровня -->
+    <!-- Вкладки навигации -->
     <div class="tab-navigation">
         <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">Главная база</button>
         <button class="tab-btn" id="tabCommunityBtn" onclick="switchTab('community')">Сборки от игроков</button>
     </div>
 
-    <!-- Раздел выбора героя (Только на главной) -->
+    <!-- Раздел выбора героя -->
     <div class="category-section" id="heroCategorySection">
         <div class="attr-title str">🔴 Strength</div>
         <div class="hero-list" id="str-list"></div>
@@ -274,7 +274,7 @@
         <div class="modal-content" style="max-width: 400px;">
             <h3 id="authModalTitle" style="margin-bottom: 15px;">Авторизация</h3>
             <form id="authForm">
-                <div class="form-group" id="nicknameGroup" style="display: none;">
+                <div class="form-group" id="authNicknameGroup" style="display: none;">
                     <label>Никнейм игрока:</label>
                     <input type="text" id="authNickname" placeholder="Например: Miracle">
                 </div>
@@ -341,8 +341,8 @@
         const auth = firebase.auth();
 
         let currentUser = null;
-        let authMode = 'login'; // 'login' или 'register'
-        let activeTab = 'main'; // 'main' или 'community'
+        let authMode = 'login';
+        let activeTab = 'main';
 
         const HEROES_DATABASE = {
             "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
@@ -406,7 +406,10 @@
 
         function openAuthModal(mode) {
             authMode = mode;
-            document.getElementById("authNicknameGroup").style.display = mode === 'register' ? 'block' : 'none';
+            const nickGroup = document.getElementById("authNicknameGroup");
+            if (nickGroup) {
+                nickGroup.style.display = mode === 'register' ? 'block' : 'none';
+            }
             document.getElementById("authModalTitle").innerText = mode === 'register' ? 'Регистрация' : 'Авторизация';
             document.getElementById("authSubmitBtn").innerText = mode === 'register' ? 'Зарегистрироваться' : 'Войти';
             document.getElementById("authModal").style.display = 'flex';
@@ -635,7 +638,7 @@
             `;
         }
 
-        /* --- Отрисовка Вкладки "Сборки от игроков" --- */
+        /* --- Вкладка "Сборки от игроков" --- */
         function renderCommunityBuilds() {
             const container = document.getElementById("buildsContainer");
             const keys = Object.keys(PLAYER_BUILDS_DATABASE);
@@ -646,7 +649,6 @@
             }
 
             let html = '';
-            // Показываем в обратном порядке (новые сверху)
             keys.reverse().forEach(key => {
                 const build = PLAYER_BUILDS_DATABASE[key];
                 const heroName = build.hero || "Герой";
@@ -782,10 +784,8 @@
 
             const safeKey = getSafeDbKey(currentHero);
             
-            // 1. Сохраняем в основную базу героя
             db.ref(`builds/${safeKey}/${activeTalentId}`).set(newStages);
 
-            // 2. Публикуем в коллекцию сборок игроков
             const playerBuildData = {
                 hero: currentHero,
                 talentIndex: activeTalentId,
@@ -800,7 +800,7 @@
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
                     closeEditor();
-                    alert("✅ Сборка успешно сохранена и опубликована во вкладку игрокам!");
+                    alert("✅ Сборка успешно сохранена и опубликована!");
                 }
             });
         });
