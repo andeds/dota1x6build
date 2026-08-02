@@ -512,6 +512,7 @@
         let allAbilitiesList = [];
         let BUILDS_DATABASE = {};
         let PLAYER_BUILDS_DATABASE = {};
+        let HERO_ABILITIES_DATABASE = {};
         let currentHero = "Alchemist";
         let activeTalentId = 0;
 
@@ -566,6 +567,7 @@
                 adminTabBtn.style.display = 'none';
             }
 
+            renderBuild();
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
@@ -764,6 +766,11 @@
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
+        db.ref('hero_abilities').on('value', (snapshot) => {
+            HERO_ABILITIES_DATABASE = snapshot.val() || {};
+            if (activeTab === 'main') renderBuild();
+        });
+
         async function loadFallbackHeroAbilities() {
             try {
                 const res = await fetch("https://api.opendota.com/api/heroStats");
@@ -805,6 +812,10 @@
         }
 
         function getHeroAbilityIconUrl(hero, index) {
+            const safeKey = getSafeDbKey(hero);
+            if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
+                return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
+            }
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
@@ -872,6 +883,9 @@
         function renderBuild() {
             const container = document.getElementById("buildsContainer");
             const stagesData = getCurrentStages();
+            const isAdmin = checkIsAdmin();
+
+            let editAbilityBtnHtml = isAdmin ? `<button class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Изменить<br>иконку</button>` : '';
 
             let html = `
                 <div class="build-card">
@@ -882,7 +896,7 @@
 
                     <div class="build-content-layout">
                         <div class="talents-column-wrapper">
-                            <button class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Изменить<br>иконку</button>
+                            ${editAbilityBtnHtml}
                             <div class="talents-column">
                                 ${[0, 1, 2, 3].map(idx => {
                                     const iconUrl = getHeroAbilityIconUrl(currentHero, idx);
@@ -987,6 +1001,10 @@
         }
 
         function openAbilityEditor() {
+            if (!checkIsAdmin()) {
+                alert("⛔ Доступно только администраторам!");
+                return;
+            }
             document.getElementById("abilitySearchInput").value = "";
             filterAbilityPicker();
             document.getElementById("editAbilityModal").style.display = "flex";
@@ -1012,12 +1030,17 @@
         }
 
         function selectAbilityIcon(abName) {
-            if (!CUSTOM_HERO_ABILITIES[currentHero]) {
-                CUSTOM_HERO_ABILITIES[currentHero] = [];
-            }
-            CUSTOM_HERO_ABILITIES[currentHero][activeTalentId] = abName;
-            renderBuild();
-            closeAbilityEditor();
+            if (!checkIsAdmin()) return;
+
+            const safeKey = getSafeDbKey(currentHero);
+            db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
+                .then(() => {
+                    renderBuild();
+                    closeAbilityEditor();
+                })
+                .catch(error => {
+                    alert("❌ Ошибка сохранения иконки: " + error.message);
+                });
         }
 
         function appendItemToInput(stageIdx, item) {
