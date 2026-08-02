@@ -525,11 +525,35 @@
         }
 
         /* --- Авторизация и логирование --- */
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async user => {
             const panel = document.getElementById("authPanel");
             const adminTabBtn = document.getElementById("tabAdminBtn");
 
             if (user) {
+                // Пытаемся обновить данные пользователя, чтобы получить актуальный статус emailVerified с сервера
+                await user.reload();
+
+                // ЕСЛИ ПОЧТА НЕ ПОДТВЕРЖДЕНА
+                if (!user.emailVerified) {
+                    console.warn(`[AUTH WARN]: Пользователь ${user.email} вошел, но почта не подтверждена.`);
+                    alert("❌ Вы не подтвердили свой Email! Пожалуйста, проверьте почту, перейдите по ссылке из письма, а затем повторно войдите на сайт.");
+                    
+                    // Принудительно выходим из системы
+                    await auth.signOut();
+                    return;
+                }
+
+                // ЕСЛИ ПОЧТА ПОДТВЕРЖДЕНА, но требуется повторный вход (один раз за сессию)
+                if (sessionStorage.getItem("relogin_required") !== "done") {
+                    console.log("[AUTH LOG]: Почта подтверждена, требуется повторный вход на сайт.");
+                    sessionStorage.setItem("relogin_required", "done");
+                    
+                    await auth.signOut();
+                    alert("✅ Почта подтверждена! Пожалуйста, войдите на сайт повторно для продолжения.");
+                    openAuthModal('login');
+                    return;
+                }
+
                 currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
                 console.log(`[AUTH INFO]: Пользователь вошел в систему -> Email: ${user.email}, UID: ${user.uid}, Ник: ${displayName}`);
@@ -548,6 +572,9 @@
             } else {
                 console.log("[AUTH INFO]: Сессия пользователя завершена (выход или не авторизован)");
                 currentUser = null;
+                // Сбрасываем флаг при выходе
+                sessionStorage.removeItem("relogin_required");
+                
                 panel.innerHTML = `
                     <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
                     <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
@@ -596,7 +623,6 @@
                     return;
                 }
 
-                // Проверка на зарезервированный/занятый логин andeds
                 if (nickname === "andeds") {
                     console.error("[AUTH ERROR]: Попытка регистрации с занятым логином: andeds");
                     alert("❌ Ошибка регистрации: Этот логин (andeds) уже занят! Пожалуйста, выберите другой.");
@@ -606,7 +632,6 @@
                 console.log(`[AUTH LOG]: Попытка проверки уникальности и регистрации никнейма: ${nickname}`);
 
                 try {
-                    // Проверка занятости никнейма в базе данных
                     const nickRef = db.ref(`usernames/${nickname}`);
                     const snapshot = await nickRef.once('value');
                     
@@ -616,22 +641,17 @@
                         return;
                     }
 
-                    // Создание пользователя в Firebase Auth
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                     const user = userCredential.user;
 
-                    // Отправка письма с подтверждением на эл. почту
                     await user.sendEmailVerification();
                     console.log(`[AUTH LOG]: Письмо подтверждения отправлено на почту: ${email}`);
 
-                    // Сохранение привязки никнейма к UID
                     await nickRef.set({ uid: user.uid, email: email });
-
-                    // Установка displayName
                     await user.updateProfile({ displayName: nickname });
 
                     closeAuthModal();
-                    alert("✅ Регистрация успешна!\n\n📨 На вашу электронную почту отправлено письмо для подтверждения. Пожалуйста, проверьте почту и подтвердите адрес[cite: 5].");
+                    alert("✅ Регистрация успешна!\n\n📨 На вашу электронную почту отправлено письмо для подтверждения. Пожалуйста, проверьте почту и подтвердите адрес.");
                     console.log(`[AUTH SUCCESS]: Пользователь успешно зарегистрирован (UID: ${user.uid}, Ник: ${nickname})`);
 
                 } catch (error) {
