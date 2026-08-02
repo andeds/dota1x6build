@@ -85,6 +85,15 @@
             border-color: var(--accent-orange);
         }
 
+        .admin-tab-btn {
+            border-color: #e74c3c !important;
+            color: #e74c3c !important;
+        }
+        .admin-tab-btn.active {
+            background: #e74c3c !important;
+            color: #fff !important;
+        }
+
         .create-build-action-btn {
             background: #27ae60;
             color: #fff;
@@ -196,6 +205,18 @@
         }
         .edit-btn:hover { background: #219150; }
 
+        .btn-delete-admin {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .btn-delete-admin:hover { background: #c0392b; }
+
         .edit-ability-btn {
             background: #2980b9; color: #fff; border: none;
             padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold;
@@ -233,33 +254,34 @@
         }
         .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
-        .ability-picker-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
-            gap: 6px;
-            max-height: 350px;
-            overflow-y: auto;
-            background: #090c10;
-            padding: 10px;
-            border-radius: 6px;
+        /* Консоль Админки */
+        .console-wrapper {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
-            margin-top: 10px;
         }
-        .ability-picker-item {
-            width: 46px;
-            height: 46px;
-            border-radius: 4px;
-            border: 1px solid #232d3d;
-            background-size: cover;
-            background-position: center;
-            cursor: pointer;
-            transition: transform 0.1s, border-color 0.1s;
+        .console-logs {
+            height: 300px;
+            overflow-y: auto;
+            border-bottom: 1px solid #222;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            font-size: 0.95rem;
         }
-        .ability-picker-item:hover {
-            transform: scale(1.1);
-            border-color: var(--accent-orange);
-            z-index: 2;
+        .console-log-item { margin: 4px 0; word-break: break-all; }
+        .console-input-group { display: flex; gap: 10px; }
+        .console-input {
+            flex: 1; background: #111; border: 1px solid #00ff00; color: #00ff00;
+            padding: 10px 14px; font-family: inherit; border-radius: 4px; outline: none;
         }
+        .console-btn {
+            background: #00ff00; color: #000; border: none; padding: 10px 20px;
+            font-weight: bold; cursor: pointer; border-radius: 4px;
+        }
+        .console-btn:hover { background: #00cc00; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 650px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
@@ -268,7 +290,7 @@
         .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: }
+        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -289,6 +311,7 @@
         <div class="tabs-group">
             <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">Главная база</button>
             <button class="tab-btn" id="tabCommunityBtn" onclick="switchTab('community')">Сборки от игроков</button>
+            <button class="tab-btn admin-tab-btn" id="tabAdminBtn" style="display: none;" onclick="switchTab('admin')">⚙️ Админ-Панель</button>
         </div>
         <button class="create-build-action-btn" onclick="triggerCreateBuild()">➕ Создать сборку</button>
     </div>
@@ -308,6 +331,26 @@
     <!-- Основной контейнер сборок -->
     <div class="container" id="buildsContainer">Загрузка данных...</div>
 
+    <!-- Контейнер для Консоли Админа -->
+    <div class="container" id="adminContainer" style="display: none;">
+        <div class="build-card">
+            <h2 style="color: #e74c3c; margin-bottom: 10px;">⚙️ Консоль Администратора (andeds)</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">
+                Команды: <code>/op &lt;логин/email&gt;</code>, <code>/deop &lt;логин/email&gt;</code>, <code>/adminlist</code>, <code>/clear</code>
+            </p>
+            
+            <div class="console-wrapper">
+                <div class="console-logs" id="consoleLogs">
+                    <div class="console-log-item">[SYSTEM]: Добро пожаловать, главный администратор andeds!</div>
+                </div>
+                <div class="console-input-group">
+                    <input type="text" id="consoleInput" class="console-input" placeholder="Введите команду (например: /op user1)..." onkeydown="handleConsoleKey(event)">
+                    <button class="console-btn" onclick="executeCommand()">Выполнить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Модальное окно Авторизации / Регистрации -->
     <div class="modal" id="authModal">
         <div class="modal-content" style="max-width: 400px;">
@@ -315,7 +358,7 @@
             <form id="authForm">
                 <div class="form-group" id="authNicknameGroup" style="display: none;">
                     <label>Никнейм игрока:</label>
-                    <input type="text" id="authNickname" placeholder="Например: Miracle">
+                    <input type="text" id="authNickname" placeholder="Например: andeds">
                 </div>
                 <div class="form-group">
                     <label>Email:</label>
@@ -402,6 +445,9 @@
         let authMode = 'login';
         let activeTab = 'main';
 
+        // Главный администратор по умолчанию — andeds
+        let adminList = ["andeds"];
+
         const HEROES_DATABASE = {
             "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
             "Agility": ["Anti-Mage", "Bloodseeker", "Broodmother", "Drow Ranger", "Ember Spirit", "Hoodwink", "Juggernaut", "Monkey King", "Morphling", "Phantom Assassin", "Razor", "Shadow Fiend", "Slark", "Sniper", "Templar Assassin", "Terrorblade", "Troll Warlord"],
@@ -444,22 +490,42 @@
             return name.replace(/['\s]/g, '_');
         }
 
+        // Проверка: является ли текущий юзер администратором
+        function checkIsAdmin() {
+            if (!currentUser) return false;
+            const displayName = (currentUser.displayName || currentUser.email.split('@')[0]).toLowerCase();
+            const email = currentUser.email ? currentUser.email.toLowerCase() : '';
+            return adminList.some(adm => adm.toLowerCase() === displayName || adm.toLowerCase() === email);
+        }
+
         /* --- Авторизация --- */
         auth.onAuthStateChanged(user => {
             currentUser = user;
             const panel = document.getElementById("authPanel");
+            const adminTabBtn = document.getElementById("tabAdminBtn");
+
             if (user) {
                 const displayName = user.displayName || user.email.split('@')[0];
                 panel.innerHTML = `
                     <span style="color: var(--accent-orange); font-weight: bold;">👤 ${displayName}</span>
                     <button class="auth-btn" onclick="logout()">Выйти</button>
                 `;
+
+                if (checkIsAdmin()) {
+                    adminTabBtn.style.display = 'inline-block';
+                    logToConsole(`[AUTH]: Авторизован администратор ${displayName}`);
+                } else {
+                    adminTabBtn.style.display = 'none';
+                }
             } else {
                 panel.innerHTML = `
                     <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
                     <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
                 `;
+                adminTabBtn.style.display = 'none';
             }
+
+            if (activeTab === 'community') renderCommunityBuilds();
         });
 
         function openAuthModal(mode) {
@@ -478,7 +544,9 @@
         }
 
         function logout() {
-            auth.signOut();
+            auth.signOut().then(() => {
+                if (activeTab === 'admin') switchTab('main');
+            });
         }
 
         document.getElementById("authForm").addEventListener("submit", function(e) {
@@ -511,20 +579,109 @@
             activeTab = tab;
             document.getElementById("tabMainBtn").classList.toggle("active", tab === 'main');
             document.getElementById("tabCommunityBtn").classList.toggle("active", tab === 'community');
+            document.getElementById("tabAdminBtn").classList.toggle("active", tab === 'admin');
+
             document.getElementById("heroCategorySection").style.display = tab === 'main' ? 'block' : 'none';
+            document.getElementById("buildsContainer").style.display = tab === 'admin' ? 'none' : 'block';
+            document.getElementById("adminContainer").style.display = tab === 'admin' ? 'block' : 'none';
 
             if (tab === 'main') {
                 renderBuild();
-            } else {
+            } else if (tab === 'community') {
                 renderCommunityBuilds();
             }
         }
 
         function triggerCreateBuild() {
-            if (activeTab === 'community') {
+            if (activeTab === 'community' || activeTab === 'admin') {
                 switchTab('main');
             }
             openEditor();
+        }
+
+        /* --- Консоль и функции админа --- */
+        function logToConsole(message, isError = false) {
+            const logsEl = document.getElementById('consoleLogs');
+            if (!logsEl) return;
+            const item = document.createElement('div');
+            item.className = 'console-log-item';
+            if (isError) item.style.color = '#ff4d4d';
+            
+            const time = new Date().toLocaleTimeString();
+            item.innerText = `[${time}] ${message}`;
+            
+            logsEl.appendChild(item);
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+
+        function handleConsoleKey(event) {
+            if (event.key === 'Enter') {
+                executeCommand();
+            }
+        }
+
+        function executeCommand() {
+            const inputEl = document.getElementById('consoleInput');
+            const commandText = inputEl.value.trim();
+            inputEl.value = '';
+
+            if (!commandText) return;
+
+            logToConsole(`> ${commandText}`);
+
+            const parts = commandText.split(' ');
+            const cmd = parts[0].toLowerCase();
+            const arg = parts[1] ? parts[1].toLowerCase() : null;
+
+            switch (cmd) {
+                case '/op':
+                    if (!arg) {
+                        logToConsole('Ошибка: Укажите логин/email. Пример: /op miracle', true);
+                    } else if (adminList.includes(arg)) {
+                        logToConsole(`Пользователь ${arg} уже админ.`, true);
+                    } else {
+                        adminList.push(arg);
+                        logToConsole(`SUCCESS: Пользователю ${arg} успешно выданы права администратора!`);
+                    }
+                    break;
+
+                case '/deop':
+                    if (!arg) {
+                        logToConsole('Ошибка: Укажите логин/email. Пример: /deop miracle', true);
+                    } else if (arg === 'andeds') {
+                        logToConsole('Ошибка: Нельзя забрать права у главного администратора andeds!', true);
+                    } else if (!adminList.includes(arg)) {
+                        logToConsole(`Пользователь ${arg} не найден в списке админов.`, true);
+                    } else {
+                        adminList = adminList.filter(user => user !== arg);
+                        logToConsole(`SUCCESS: Права администратора у ${arg} отняты.`);
+                    }
+                    break;
+
+                case '/adminlist':
+                    logToConsole(`Текущие администраторы:\n - ` + adminList.join('\n - '));
+                    break;
+
+                case '/clear':
+                    document.getElementById('consoleLogs').innerHTML = '';
+                    break;
+
+                default:
+                    logToConsole(`Неизвестная команда "${cmd}". Доступные: /op, /deop, /adminlist, /clear`, true);
+                    break;
+            }
+        }
+
+        function adminDeleteBuild(buildKey) {
+            if (!checkIsAdmin()) {
+                alert("⛔ Нет прав для удаления!");
+                return;
+            }
+            if (confirm("Вы точно хотите удалить эту сборку из базы?")) {
+                db.ref(`player_builds/${buildKey}`).remove()
+                    .then(() => alert("✅ Сборка успешно удалена админом!"))
+                    .catch(err => alert("❌ Ошибка удаления: " + err.message));
+            }
         }
 
         /* --- Firebase Listeners --- */
@@ -715,7 +872,9 @@
                 return;
             }
 
+            const isAdmin = checkIsAdmin();
             let html = '';
+            
             keys.reverse().forEach(key => {
                 const build = PLAYER_BUILDS_DATABASE[key];
                 const heroName = build.hero || "Герой";
@@ -725,6 +884,8 @@
                 const talentIdx = build.talentIndex || 0;
                 const iconUrl = getHeroAbilityIconUrl(heroName, talentIdx);
 
+                const deleteBtnHtml = isAdmin ? `<button class="btn-delete-admin" onclick="adminDeleteBuild('${key}')">🗑️ Удалить сборку</button>` : '';
+
                 html += `
                     <div class="build-card">
                         <div class="build-header">
@@ -733,7 +894,10 @@
                                 <span style="font-size: 1.1rem; font-weight: bold; color: var(--accent-orange);">— ${buildTitle}</span>
                                 <span class="category-tag">${category}</span>
                             </div>
-                            <span class="author-tag">Автор: ${author}</span>
+                            <div>
+                                <span class="author-tag">Автор: ${author}</span>
+                                ${deleteBtnHtml}
+                            </div>
                         </div>
 
                         <div class="build-content-layout">
@@ -824,7 +988,7 @@
                         <div style="margin-top: 5px;">
                             <select onchange="if(this.value) { appendItemToInput(${sIdx}, this.value); this.value=''; }">
                                 <option value="">+ Добавить предмет из списка...</option>
-                                ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}</option>`).join('')}
+                                ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}">${item}</option>`).join('')}
                             </select>
                         </div>
                     </div>
