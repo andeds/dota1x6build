@@ -326,7 +326,7 @@
     <header>
         <div>
             <h1>Dota 1x6 — База Сборок</h1>
-            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2</p>
+            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2 (Каин учтен)</p>
         </div>
         <div class="user-auth-panel" id="authPanel">
             <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
@@ -530,20 +530,14 @@
             const adminTabBtn = document.getElementById("tabAdminBtn");
 
             if (user) {
-                // Обновляем данные пользователя для получения актуального статуса emailVerified с сервера
                 await user.reload();
 
-                // ЕСЛИ ПОЧТА НЕ ПОДТВЕРЖДЕНА
                 if (!user.emailVerified) {
                     console.warn(`[AUTH WARN]: Пользователь ${user.email} вошел, но почта не подтверждена.`);
                     alert("❌ Вы не подтвердили свой Email! Пожалуйста, проверьте почту, перейдите по ссылке из письма, а затем повторно войдите на сайт.");
-                    
-                    // Принудительно выходим из системы
                     await auth.signOut();
                     return;
                 }
-
-                // УБРАН блок принудительного разлогинивания через sessionStorage, чтобы исключить бесконечный цикл перезагрузки
 
                 currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
@@ -563,7 +557,6 @@
             } else {
                 console.log("[AUTH INFO]: Сессия пользователя завершена (выход или не авторизован)");
                 currentUser = null;
-                // Сбрасываем флаг при выходе
                 sessionStorage.removeItem("relogin_required");
                 
                 panel.innerHTML = `
@@ -600,7 +593,6 @@
             });
         }
 
-        // Обработка регистрации и входа с проверкой логина "andeds" и верификацией почты
         document.getElementById("authForm").addEventListener("submit", async function(e) {
             e.preventDefault();
             const email = document.getElementById("authEmail").value.trim();
@@ -610,24 +602,19 @@
             if (authMode === 'register') {
                 if (!nickname) {
                     alert("⚠️ Пожалуйста, укажите ваш никнейм!");
-                    console.warn("[AUTH WARN]: Попытка регистрации без никнейма");
                     return;
                 }
 
                 if (nickname === "andeds") {
-                    console.error("[AUTH ERROR]: Попытка регистрации с занятым логином: andeds");
                     alert("❌ Ошибка регистрации: Этот логин (andeds) уже занят! Пожалуйста, выберите другой.");
                     return;
                 }
-
-                console.log(`[AUTH LOG]: Попытка проверки уникальности и регистрации никнейма: ${nickname}`);
 
                 try {
                     const nickRef = db.ref(`usernames/${nickname}`);
                     const snapshot = await nickRef.once('value');
                     
                     if (snapshot.exists()) {
-                        console.error(`[AUTH ERROR]: Никнейм "${nickname}" уже занят другим игроком.`);
                         alert(`❌ Ошибка: Логин "${nickname}" уже занят другим пользователем!`);
                         return;
                     }
@@ -636,29 +623,22 @@
                     const user = userCredential.user;
 
                     await user.sendEmailVerification();
-                    console.log(`[AUTH LOG]: Письмо подтверждения отправлено на почту: ${email}`);
-
                     await nickRef.set({ uid: user.uid, email: email });
                     await user.updateProfile({ displayName: nickname });
 
                     closeAuthModal();
                     alert("✅ Регистрация успешна!\n\n📨 На вашу электронную почту отправлено письмо для подтверждения. Пожалуйста, проверьте почту и подтвердите адрес.");
-                    console.log(`[AUTH SUCCESS]: Пользователь успешно зарегистрирован (UID: ${user.uid}, Ник: ${nickname})`);
 
                 } catch (error) {
-                    console.error("[AUTH ERROR]: Ошибка в процессе регистрации:", error.message);
                     alert("❌ Ошибка регистрации: " + error.message);
                 }
 
             } else {
-                console.log(`[AUTH LOG]: Попытка входа в систему для email: ${email}`);
                 auth.signInWithEmailAndPassword(email, password)
                     .then(() => {
-                        console.log("[AUTH SUCCESS]: Успешный вход в систему");
                         closeAuthModal();
                     })
                     .catch(error => {
-                        console.error("[AUTH ERROR]: Ошибка входа:", error.message);
                         alert("❌ Ошибка входа: " + error.message);
                     });
             }
@@ -684,7 +664,6 @@
         }
 
         function triggerCreateBuild() {
-            console.log("[UI LOG]: Нажата кнопка создания сборки");
             if (activeTab === 'community' || activeTab === 'admin') {
                 switchTab('main');
             }
@@ -704,7 +683,6 @@
             
             logsEl.appendChild(item);
             logsEl.scrollTop = logsEl.scrollHeight;
-            console.log(`[CONSOLE LOG]: ${message}`);
         }
 
         function handleConsoleKey(event) {
@@ -729,79 +707,65 @@
             switch (cmd) {
                 case '/op':
                     if (!targetUid) {
-                        logToConsole('Ошибка: Укажите UID пользователя. Пример: /op 8xKzL39...', true);
+                        logToConsole('Ошибка: Укажите UID пользователя.', true);
                     } else if (adminList.includes(targetUid)) {
-                        logToConsole(`Пользователь с UID ${targetUid} уже является админом.`, true);
+                        logToConsole(`Пользователь уже админ.`, true);
                     } else {
                         adminList.push(targetUid);
-                        logToConsole(`SUCCESS: UID ${targetUid} успешно добавлен в список администраторов!`);
+                        logToConsole(`SUCCESS: UID ${targetUid} добавлен в админы!`);
                     }
                     break;
-
                 case '/deop':
                     if (!targetUid) {
-                        logToConsole('Ошибка: Укажите UID пользователя. Пример: /deop 8xKzL39...', true);
+                        logToConsole('Ошибка: Укажите UID.', true);
                     } else if (targetUid === MASTER_ADMIN_UID) {
                         logToConsole('Ошибка: Нельзя забрать права у Главного Администратора!', true);
-                    } else if (!adminList.includes(targetUid)) {
-                        logToConsole(`UID ${targetUid} не найден в списке админов.`, true);
                     } else {
                         adminList = adminList.filter(uid => uid !== targetUid);
-                        logToConsole(`SUCCESS: Права администратора у UID ${targetUid} отняты.`);
+                        logToConsole(`SUCCESS: Права у UID ${targetUid} отняты.`);
                     }
                     break;
-
                 case '/adminlist':
                     logToConsole(`Список UID администраторов:\n - ` + adminList.join('\n - '));
                     break;
-
                 case '/myuid':
-                    if (currentUser) {
-                        logToConsole(`Ваш UID: ${currentUser.uid}`);
-                    } else {
-                        logToConsole('Вы не авторизованы.', true);
-                    }
+                    if (currentUser) logToConsole(`Ваш UID: ${currentUser.uid}`);
+                    else logToConsole('Не авторизован.', true);
                     break;
-
                 case '/clear':
                     document.getElementById('consoleLogs').innerHTML = '';
                     break;
-
                 default:
-                    logToConsole(`Неизвестная команда "${cmd}". Доступные: /op <UID>, /deop <UID>, /adminlist, /myuid, /clear`, true);
+                    logToConsole(`Неизвестная команда "${cmd}".`, true);
                     break;
             }
         }
 
         function adminDeleteBuild(buildKey) {
             if (!checkIsAdmin()) {
-                alert("⛔ Нет прав для удаления!");
+                alert("⛔ Нет прав!");
                 return;
             }
-            if (confirm("Вы точно хотите удалить эту сборку из базы?")) {
-                console.log(`[ADMIN LOG]: Удаление сборки ID: ${buildKey} администратором`);
+            if (confirm("Удалить сборку?")) {
                 db.ref(`player_builds/${buildKey}`).remove()
-                    .then(() => alert("✅ Сборка успешно удалена админом!"))
-                    .catch(err => alert("❌ Ошибка удаления: " + err.message));
+                    .then(() => alert("✅ Удалено!"))
+                    .catch(err => alert("❌ Ошибка: " + err.message));
             }
         }
 
         /* --- Firebase Listeners --- */
         db.ref('builds').on('value', (snapshot) => {
             BUILDS_DATABASE = snapshot.val() || {};
-            console.log("[DB LOG]: Получены данные основных сборок из Firebase");
             if (activeTab === 'main') renderBuild();
         });
 
         db.ref('player_builds').on('value', (snapshot) => {
             PLAYER_BUILDS_DATABASE = snapshot.val() || {};
-            console.log("[DB LOG]: Получены данные сборок игроков из Firebase");
             if (activeTab === 'community') renderCommunityBuilds();
         });
 
         async function loadFallbackHeroAbilities() {
             try {
-                console.log("[API LOG]: Загрузка кастомных иконок способностей из OpenDota API...");
                 const res = await fetch("https://api.opendota.com/api/heroStats");
                 const heroes = await res.json();
                 
@@ -830,10 +794,9 @@
                 });
 
                 allAbilitiesList = Array.from(fullSet);
-                console.log("[API SUCCESS]: Способности успешно загружены. Всего:", allAbilitiesList.length);
                 renderBuild();
             } catch (e) {
-                console.error("[API ERROR]: Ошибка загрузки API OpenDota:", e);
+                console.error("[API ERROR]:", e);
             }
         }
 
@@ -882,7 +845,6 @@
         }
 
         function selectHero(hero) {
-            console.log(`[UI LOG]: Выбран герой: ${hero}`);
             currentHero = hero;
             activeTalentId = 0;
             renderNavigation();
@@ -890,7 +852,6 @@
         }
 
         function selectTalent(idx) {
-            console.log(`[UI LOG]: Выбрана способность/слот №${idx + 1} для героя ${currentHero}`);
             activeTalentId = idx;
             renderBuild();
         }
@@ -1026,7 +987,6 @@
         }
 
         function openAbilityEditor() {
-            console.log("[UI LOG]: Открытие редактора иконки способности");
             document.getElementById("abilitySearchInput").value = "";
             filterAbilityPicker();
             document.getElementById("editAbilityModal").style.display = "flex";
@@ -1052,7 +1012,6 @@
         }
 
         function selectAbilityIcon(abName) {
-            console.log(`[UI LOG]: Выбрана кастомная иконка: ${abName} для героя ${currentHero}`);
             if (!CUSTOM_HERO_ABILITIES[currentHero]) {
                 CUSTOM_HERO_ABILITIES[currentHero] = [];
             }
@@ -1069,18 +1028,15 @@
             } else {
                 input.value = item;
             }
-            console.log(`[UI LOG]: Предмет "${item}" добавлен в этап #${stageIdx}`);
         }
 
         function openEditor() {
             if (!currentUser) {
                 alert("🔒 Только авторизованные пользователи могут редактировать и сохранять сборки!");
-                console.warn("[AUTH WARN]: Неавторизованный пользователь попытался открыть редактор сборок");
                 openAuthModal('login');
                 return;
             }
 
-            console.log("[UI LOG]: Открытие редактора сборки предметов");
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
             document.getElementById("modalTitle").innerText = `Создание сборки: ${currentHero} (Способность #${activeTalentId + 1})`;
@@ -1134,7 +1090,6 @@
             }
 
             const safeKey = getSafeDbKey(currentHero);
-            console.log(`[DB LOG]: Сохранение сборки для героя: ${currentHero}, Название: ${buildTitle}`);
             
             db.ref(`builds/${safeKey}/${activeTalentId}`).set({
                 title: buildTitle,
@@ -1155,10 +1110,8 @@
 
             db.ref('player_builds').push(playerBuildData, (error) => {
                 if (error) {
-                    console.error("[DB ERROR]: Ошибка сохранения сборки:", error.message);
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
-                    console.log("[DB SUCCESS]: Сборка успешно опубликована в community");
                     closeEditor();
                     alert("✅ Сборка успешно создана и опубликована!");
                     switchTab('community');
