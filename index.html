@@ -1046,8 +1046,8 @@
 
             db.ref(`hero_abilities/${safeKey}/${activeTalentId}`).set(abName)
                 .then(() => {
-                    renderBuild();
                     closeAbilityEditor();
+                    renderBuild();
                 })
                 .catch(error => {
                     alert("❌ Ошибка сохранения иконки: " + error.message);
