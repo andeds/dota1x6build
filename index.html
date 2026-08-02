@@ -426,7 +426,7 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Запасные способности на случай, если API не ответит
+        // Запасные способности на случай, если API не ответит (с исправленными слотами для Muerta, Nyx, Pangolier, Vengeful Spirit, WD, Tinker, Juggernaut, Wraith King, Huskar, Lifestealer)
         const CUSTOM_HERO_ABILITIES = {
             "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
@@ -434,14 +434,14 @@
             "Centaur Warrunner": ["centaur_hoof_stomp", "centaur_double_edge", "centaur_return", "centaur_stampede"],
             "Huskar": ["huskar_inner_fire", "huskar_burning_spear", "huskar_berserkers_blood", "huskar_life_break"],
             "Legion Commander": ["legion_commander_overwhelming_odds", "legion_commander_press_the_attack", "legion_commander_moment_of_courage", "legion_commander_duel"],
-            "Lifestealer": ["lifestealer_rage", "lifestealer_feast", "lifestealer_ghoul_frenzy", "lifestealer_infest"],
+            "Lifestealer": ["life_stealer_rage", "life_stealer_feast", "life_stealer_open_wounds", "life_stealer_infest"],
             "Mars": ["mars_spear", "mars_gods_rebuke", "mars_bulwark", "mars_arena_of_blood"],
             "Night Stalker": ["night_stalker_void", "night_stalker_crippling_fear", "night_stalker_hunter_in_the_night", "night_stalker_darkness"],
             "Ogre Magi": ["ogre_magi_fireblast", "ogre_magi_ignite", "ogre_magi_bloodlust", "ogre_magi_multicast"],
             "Primal Beast": ["primal_beast_onslaught", "primal_beast_trample", "primal_beast_uproar", "primal_beast_pulverize"],
             "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
             "Sven": ["sven_storm_bolt", "sven_great_cleave", "sven_warcry", "sven_gods_strength"],
-            "Wraith King": ["wraith_king_hellfire_blast", "wraith_king_vampiric_spirit", "wraith_king_mortal_strike", "wraith_king_reincarnation"],
+            "Wraith King": ["wraith_king_fireblast", "wraith_king_vampiric_spirit", "wraith_king_mortal_strike", "wraith_king_reincarnation"],
 
             "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
             "Bloodseeker": ["bloodseeker_bloodrage", "bloodseeker_blood_bath", "bloodseeker_thirst", "bloodseeker_rupture"],
@@ -449,7 +449,7 @@
             "Drow Ranger": ["drow_ranger_frost_arrows", "drow_ranger_silence", "drow_ranger_multishot", "drow_ranger_marksmanship"],
             "Ember Spirit": ["ember_spirit_searing_chains", "ember_spirit_sleight_of_fist", "ember_spirit_flame_guard", "ember_spirit_activate_fire_remnant"],
             "Hoodwink": ["hoodwink_acorn_shot", "hoodwink_bushwhack", "hoodwink_scurry", "hoodwink_sharpshooter"],
-            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omnislash"],
+            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omni_slash"],
             "Monkey King": ["monkey_king_boundless_strike", "monkey_king_tree_dance", "monkey_king_jingu_mastery", "monkey_king_wukongs_command"],
             "Morphling": ["morphling_waveform", "morphling_adaptive_strike_agi", "morphling_morph_agi", "morphling_replicate"],
             "Phantom Assassin": ["phantom_assassin_stifling_dagger", "phantom_assassin_phantom_strike", "phantom_assassin_blur", "phantom_assassin_coup_de_grace"],
@@ -465,12 +465,12 @@
             "Invoker": ["invoker_quas", "invoker_wex", "invoker_exort", "invoker_invoke"],
             "Leshrac": ["leshrac_split_earth", "leshrac_diabolic_edict", "leshrac_lightning_storm", "leshrac_pulse_nova"],
             "Lina": ["lina_dragon_slave", "lina_light_strike_array", "lina_fiery_soul", "lina_laguna_blade"],
-            "Muerta": ["muerta_dead_shot", "muerta_the_calling", "muerta_gunlinger", "muerta_parting_shot"],
+            "Muerta": ["muerta_dead_shot", "muerta_the_calling", "muerta_gunlinger", "muerta_pierce_the_veil"],
             "Puck": ["puck_illusory_orb", "puck_waning_rift", "puck_phase_shift", "puck_dream_coil"],
             "Queen of Pain": ["queenofpain_shadow_strike", "queenofpain_blink", "queenofpain_scream_of_pain", "queenofpain_sonic_wave"],
             "Skywrath Mage": ["skywrath_mage_arcane_bolt", "skywrath_mage_concussive_shot", "skywrath_mage_ancient_seal", "skywrath_mage_mystic_flare"],
-            "Tinker": ["tinker_laser", "tinker_heat_seeking_missile", "tinker_defense_matrix", "tinker_rearm"],
-            "Witch Doctor": ["witch_doctor_paralyzing_casks", "witch_doctor_voodoo_restoration", "witch_doctor_maledict", "witch_doctor_death_ward"],
+            "Tinker": ["tinker_laser", "tinker_heat_seeking_missile", "tinker_warp_grenade", "tinker_rearm"],
+            "Witch Doctor": ["witch_doctor_paralyzing_cask", "witch_doctor_voodoo_restoration", "witch_doctor_maledict", "witch_doctor_death_ward"],
             "Zeus": ["zuus_arc_lightning", "zuus_lightning_bolt", "zuus_heavenly_jump", "zuus_thundergods_wrath"],
 
             "Abaddon": ["abaddon_death_coil", "abaddon_aphotic_shield", "abaddon_frostmourne", "abaddon_borrowed_time"],
@@ -483,7 +483,7 @@
             "Pangolier": ["pangolier_swashbuckle", "pangolier_shield_crash", "pangolier_heartpiercer", "pangolier_roll_up"],
             "Sand King": ["sandking_burrowstrike", "sandking_sand_storm", "sandking_caustic_finale", "sandking_epicenter"],
             "Snapfire": ["snapfire_scatterblast", "snapfire_firesnap_cookie", "snapfire_lil_shredder", "snapfire_mortimer_kisses"],
-            "Vengeful Spirit": ["vengeful_spirit_magic_missile", "vengeful_spirit_wave_of_terror", "vengeful_spirit_nether_swap", "vengeful_spirit_command_aura"]
+            "Vengeful Spirit": ["vengefulspirit_magic_missile", "vengefulspirit_wave_of_terror", "vengefulspirit_command_aura", "vengefulspirit_nether_swap"]
         };
 
         const POPULAR_ITEMS = [
@@ -737,17 +737,14 @@
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
             
-            // 1. Если иконка была изменена в базе данных
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
 
-            // 2. Сначала проверяем запасной список (гарантированные правильные иконки)
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
                 return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
 
-            // 3. Ищем способности через OpenDota API ключ
             const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
             if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
                 const abs = openDotaHeroAbilities[apiHeroKey].abilities;
@@ -756,7 +753,6 @@
                 }
             }
 
-            // Заглушка, если ничего не нашлось
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
