@@ -217,26 +217,6 @@
         }
         .btn-delete-admin:hover { background: #c0392b; }
 
-        .edit-ability-btn {
-            width: 100%;
-            background: #2980b9; 
-            color: #fff; 
-            border: 1px solid #3498db;
-            padding: 5px 2px; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-size: 0.75rem; 
-            font-weight: bold;
-            text-align: center; 
-            transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            margin-bottom: 5px;
-        }
-        .edit-ability-btn:hover { 
-            background: #3498db; 
-            transform: translateY(-1px);
-        }
-
         .stages-grid { 
             flex-grow: 1;
             display: grid; 
@@ -266,33 +246,6 @@
             font-size: 9px; overflow: hidden; color: var(--text-muted);
         }
         .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-
-        .ability-picker-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-            gap: 8px;
-            max-height: 350px;
-            overflow-y: auto;
-            margin-top: 10px;
-            padding: 5px;
-            background: #090c10;
-            border-radius: 6px;
-        }
-
-        .ability-picker-item {
-            width: 48px;
-            height: 48px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background-size: cover;
-            background-position: center;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        .ability-picker-item:hover {
-            transform: scale(1.1);
-            border-color: var(--accent-orange);
-        }
 
         .console-wrapper {
             background: #000;
@@ -443,21 +396,6 @@
         </div>
     </div>
 
-    <div class="modal" id="editAbilityModal">
-        <div class="modal-content">
-            <h3 style="margin-bottom: 10px;">Выберите иконку способности</h3>
-            <div class="form-group">
-                <input type="text" id="abilitySearchInput" placeholder="Поиск по названию..." oninput="filterAbilityPicker()">
-            </div>
-            
-            <div class="ability-picker-grid" id="abilityPickerGrid"></div>
-
-            <div class="modal-actions">
-                <button type="button" class="cancel-btn" onclick="closeAbilityEditor()">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAoDJiySpfKBu-CXBcdNIo0S-A5Bot05qc",
@@ -556,7 +494,6 @@
             "satanic", "butterfly", "daedalus", "monkey_king_bar", "abyssal_blade", "bloodthorn", "heart", "assault", "shivas_guard", "sphere", "refresher", "octarine_core", "aghanims_scepter"
         ];
 
-        let allAbilitiesList = [];
         let openDotaHeroAbilities = {};
         let BUILDS_DATABASE = {};
         let PLAYER_BUILDS_DATABASE = {};
@@ -577,25 +514,9 @@
                 const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
                 const data = await res.json();
                 openDotaHeroAbilities = data;
-
-                const fullSet = new Set();
-                Object.values(data).forEach(heroObj => {
-                    if (heroObj && heroObj.abilities) {
-                        heroObj.abilities.forEach(ab => fullSet.add(ab));
-                    }
-                });
-                Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
-                Object.values(HERO_ABILITIES_DATABASE).forEach(heroObj => {
-                    if (typeof heroObj === 'object') {
-                        Object.values(heroObj).forEach(ab => { if(ab) fullSet.add(ab); });
-                    }
-                });
-                allAbilitiesList = Array.from(fullSet);
                 renderBuild();
             } catch (e) {
-                const fullSet = new Set();
-                Object.values(CUSTOM_HERO_ABILITIES).forEach(abs => abs.forEach(a => fullSet.add(a)));
-                allAbilitiesList = Array.from(fullSet);
+                console.error("Could not load OpenDota abilities:", e);
             }
         }
         loadAllAbilitiesFromOpenDota();
@@ -816,23 +737,23 @@
         function getHeroAbilityIconUrl(hero, index) {
             const safeKey = getSafeDbKey(hero);
             
-            // 1. Если иконка была изменена вручную через админку/базу
+            // 1. Если иконка была изменена в базе данных
             if (HERO_ABILITIES_DATABASE[safeKey] && HERO_ABILITIES_DATABASE[safeKey][index]) {
                 return getAbilityIconUrl(HERO_ABILITIES_DATABASE[safeKey][index]);
             }
 
-            // 2. Ищем способности через загруженный OpenDota API ключ
+            // 2. Сначала проверяем запасной список (гарантированные правильные иконки)
+            if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
+                return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
+            }
+
+            // 3. Ищем способности через OpenDota API ключ
             const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
             if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
                 const abs = openDotaHeroAbilities[apiHeroKey].abilities;
                 if (abs[index]) {
                     return getAbilityIconUrl(abs[index]);
                 }
-            }
-
-            // 3. Используем запасной список
-            if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
-                return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
 
             // Заглушка, если ничего не нашлось
@@ -894,15 +815,6 @@
             return DEFAULT_STAGES;
         }
 
-        let editingTargetTalentIndex = null;
-
-        function openAbilityEditorForTalent(idx) {
-            editingTargetTalentIndex = idx;
-            document.getElementById("abilitySearchInput").value = "";
-            filterAbilityPicker();
-            document.getElementById("editAbilityModal").style.display = "flex";
-        }
-
         function renderBuild() {
             const container = document.getElementById("buildsContainer");
             const stagesData = getCurrentStages();
@@ -916,7 +828,6 @@
 
                     <div class="build-content-layout">
                         <div class="talents-column-wrapper">
-                            <button type="button" class="edit-ability-btn" onclick="openAbilityEditorForTalent(activeTalentId)">✏️ Иконка</button>
                             <div class="talents-column">
                                 ${[0, 1, 2, 3].map(idx => {
                                     const iconUrl = getHeroAbilityIconUrl(currentHero, idx);
@@ -1018,46 +929,6 @@
             });
 
             container.innerHTML = html;
-        }
-
-        function closeAbilityEditor() {
-            document.getElementById("editAbilityModal").style.display = "none";
-        }
-
-        function filterAbilityPicker() {
-            const query = document.getElementById("abilitySearchInput").value.trim().toLowerCase();
-            const grid = document.getElementById("abilityPickerGrid");
-            const filtered = allAbilitiesList.filter(ab => ab.toLowerCase().includes(query));
-
-            grid.innerHTML = filtered.map(ab => `
-                <div class="ability-picker-item" 
-                     style="background-image: url('${getAbilityIconUrl(ab)}')" 
-                     title="${ab}"
-                     onclick="selectAbilityIcon('${ab}')">
-                </div>
-            `).join('');
-        }
-
-        function selectAbilityIcon(abName) {
-            const safeKey = getSafeDbKey(currentHero);
-            const targetIdx = editingTargetTalentIndex !== null ? editingTargetTalentIndex : activeTalentId;
-            
-            if (!HERO_ABILITIES_DATABASE[safeKey]) {
-                HERO_ABILITIES_DATABASE[safeKey] = {};
-            }
-            
-            HERO_ABILITIES_DATABASE[safeKey][targetIdx] = abName;
-            closeAbilityEditor();
-            renderBuild();
-
-            db.ref(`hero_abilities/${safeKey}/${targetIdx}`).set(abName)
-                .then(() => {
-                    console.log("✅ Иконка успешно сохранена в базу данных!");
-                })
-                .catch(error => {
-                    alert("❌ Ошибка сохранения иконки в базу данных: " + error.message);
-                    console.error("Firebase write error:", error);
-                });
         }
 
         function appendItemToInput(stageIdx, item) {
