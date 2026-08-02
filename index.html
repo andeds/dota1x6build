@@ -799,21 +799,16 @@
                             return info && info.behavior;
                         });
 
-                        // Записываем в apiAbilitiesMap только если в базе Firebase НЕТ кастомной иконки для этого слота!
-                        const safeKey = getSafeDbKey(name);
                         if (!apiAbilitiesMap[name]) apiAbilitiesMap[name] = [];
                         
                         realAbilities.slice(0, 4).forEach((abName, idx) => {
-                            if (!HERO_ABILITIES_DATABASE[safeKey] || !HERO_ABILITIES_DATABASE[safeKey][idx]) {
-                                apiAbilitiesMap[name][idx] = abName;
-                            }
+                            apiAbilitiesMap[name][idx] = abName;
                         });
 
                         realAbilities.forEach(a => fullSet.add(a));
                     }
                 });
 
-                // Добавим принудительно Black Hole на всякий случай, если ищете её
                 fullSet.add("enigma_black_hole");
 
                 allAbilitiesList = Array.from(fullSet);
@@ -1057,8 +1052,6 @@
 
             const safeKey = getSafeDbKey(currentHero);
             
-            // Мгновенное обновление локальных данных без ожидания ответа сервера, 
-            // чтобы интерфейс сразу подхватил новую картинку и не откатывал ее
             if (!HERO_ABILITIES_DATABASE[safeKey]) {
                 HERO_ABILITIES_DATABASE[safeKey] = {};
             }
