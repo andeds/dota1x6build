@@ -289,10 +289,36 @@
         .action-button-admin:hover { background: #2980b9; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 2000; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 650px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 750px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; margin-bottom: 5px; color: var(--accent-orange); font-size: 0.9rem;}
         .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
+        
+        .editor-stage-box {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .editor-items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .editor-item-slot-group {
+            background: #11161d;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #1e2837;
+        }
+        .editor-item-slot-group label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
@@ -720,14 +746,12 @@
             }
         }
 
-        // Автоматическая загрузка ВСЕХ героев из списков и записей их способностей в Firebase hero_abilities
         async function autoPopulateHeroesToFirebase() {
             if (!checkIsAdmin()) return;
             if (!confirm("Вы уверены, что хотите запустить автозаполнение всех героев и их способностей в Firebase?")) return;
 
             logToConsole("Начало процесса автозаполнения героев...");
             
-            // Если OpenDota еще не загрузилась, подгрузим её
             if (Object.keys(openDotaHeroAbilities).length === 0) {
                 try {
                     const res = await fetch("https://api.opendota.com/api/constants/hero_abilities");
@@ -745,11 +769,9 @@
                 const safeKey = getSafeDbKey(hero);
                 let abilitiesList = [];
 
-                // 1. Пробуем взять из жестко прописанных кастомных (они точные)
                 if (CUSTOM_HERO_ABILITIES[hero]) {
                     abilitiesList = CUSTOM_HERO_ABILITIES[hero];
                 } else {
-                    // 2. Иначе берем из OpenDota API
                     const apiHeroKey = "npc_dota_hero_" + hero.toLowerCase().replace(/[\s-]/g, '_');
                     if (openDotaHeroAbilities[apiHeroKey] && openDotaHeroAbilities[apiHeroKey].abilities) {
                         abilitiesList = openDotaHeroAbilities[apiHeroKey].abilities.slice(0, 4);
@@ -990,12 +1012,6 @@
             container.innerHTML = html;
         }
 
-        function appendItemToInput(stageIdx, item) {
-            const input = document.getElementById(`stage_items_${stageIdx}`);
-            let currentVal = input.value.trim();
-            input.value = currentVal ? currentVal + ", " + item : item;
-        }
-
         function openEditor() {
             if (!currentUser) {
                 alert("🔒 Только авторизованные пользователи могут редактировать и сохранять сборки!");
@@ -1008,29 +1024,41 @@
             document.getElementById("modalTitle").innerText = `Создание сборки: ${currentHero} (Способность #${activeTalentId + 1})`;
             document.getElementById("buildTitleInput").value = "";
 
-            container.innerHTML = stagesData.map((stage, sIdx) => `
-                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div class="form-group">
-                        <label>Этап / Тайминг</label>
-                        <input type="text" id="stage_time_${sIdx}" value="${stage.time || ''}">
-                    </div>
-                    - <div class="form-group">
-                        <label>Предметы (до 6 шт):</label>
-                        <input type="text" id="stage_items_${sIdx}" value="${stage.items ? stage.items.join(', ') : ''}">
-                        
-                        <div style="margin-top: 5px;">
-                            <select onchange="if(this.value) { appendItemToInput(${sIdx}, this.value); this.value=''; }">
-                                <option value="">+ Добавить предмет из списка...</option>
+            container.innerHTML = stagesData.map((stage, sIdx) => {
+                let slotsFormHtml = '';
+                for (let i = 0; i < 6; i++) {
+                    const currentVal = (stage.items && stage.items[i]) ? stage.items[i] : '';
+                    slotsFormHtml += `
+                        <div class="editor-item-slot-group">
+                            <label>Слот #${i + 1}</label>
+                            <input type="text" id="stage_${sIdx}_item_${i}" value="${currentVal}" placeholder="ID предмета" style="margin-bottom: 4px;">
+                            <select onchange="if(this.value) { document.getElementById('stage_${sIdx}_item_${i}').value = this.value; this.value=''; }">
+                                <option value="">+ Выбрать предмет...</option>
                                 ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}</option>`).join('')}
                             </select>
                         </div>
+                    `;
+                }
+
+                return `
+                    <div class="editor-stage-box">
+                        <div class="form-group">
+                            <label>Этап / Тайминг</label>
+                            <input type="text" id="stage_time_${sIdx}" value="${stage.time || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Предметы инвентаря (до 6 слотов):</label>
+                            <div class="editor-items-grid">
+                                ${slotsFormHtml}
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Нейтральный предмет:</label>
+                            <input type="text" id="stage_neutral_${sIdx}" value="${stage.neutral || ''}">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Нейтральный предмет:</label>
-                        <input type="text" id="stage_neutral_${sIdx}" value="${stage.neutral || ''}">
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             document.getElementById("editModal").style.display = "flex";
         }
@@ -1047,10 +1075,14 @@
 
             for (let sIdx = 0; sIdx < 4; sIdx++) {
                 const time = document.getElementById(`stage_time_${sIdx}`).value;
-                const itemsRaw = document.getElementById(`stage_items_${sIdx}`).value;
                 const neutral = document.getElementById(`stage_neutral_${sIdx}`).value.trim();
+                
+                const items = [];
+                for (let i = 0; i < 6; i++) {
+                    const val = document.getElementById(`stage_${sIdx}_item_${i}`).value.trim();
+                    if (val) items.push(val);
+                }
 
-                const items = itemsRaw.split(',').map(i => i.trim()).filter(i => i.length > 0);
                 newStages.push({ time, items, neutral });
             }
 
@@ -1088,3 +1120,4 @@
     </script>
 </body>
 </html>
+```[cite: 2]
