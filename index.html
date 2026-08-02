@@ -319,6 +319,17 @@
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+
+        .auth-notice {
+            background: #2a1f10;
+            border: 1px solid var(--accent-orange);
+            color: #f1c40f;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -381,8 +392,13 @@
 
     <!-- Модальное окно Авторизации / Регистрации -->
     <div class="modal" id="authModal">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content" style="max-width: 420px;">
             <h3 id="authModalTitle" style="margin-bottom: 15px;">Авторизация</h3>
+            
+            <div class="auth-notice" id="authNotice">
+                ✉️ На ваш Email отправлено письмо. Перейдите по ссылке в письме, чтобы подтвердить аккаунт.
+            </div>
+
             <form id="authForm">
                 <div class="form-group" id="authNicknameGroup" style="display: none;">
                     <label>Никнейм игрока:</label>
@@ -401,6 +417,9 @@
                     <button type="submit" class="save-btn" id="authSubmitBtn">Войти</button>
                 </div>
             </form>
+            <div style="margin-top: 15px; text-align: center;">
+                <button id="resendEmailBtn" style="display: none; background: transparent; border: none; color: var(--accent-orange); text-decoration: underline; cursor: pointer; font-size: 0.85rem;" onclick="resendVerification()">Отправить письмо с подтверждением повторно</button>
+            </div>
         </div>
     </div>
 
@@ -473,7 +492,6 @@
         let authMode = 'login';
         let activeTab = 'main';
 
-        // 🔴 Главный администратор (Ваш UID)
         const MASTER_ADMIN_UID = "s3avMuug30g7CbpyaN6BL8actLs2";
         let adminList = [MASTER_ADMIN_UID];
 
@@ -519,19 +537,29 @@
             return name.replace(/['\s]/g, '_');
         }
 
-        // Проверка строго по UID
         function checkIsAdmin() {
             if (!currentUser) return false;
             return adminList.includes(currentUser.uid);
         }
 
-        /* --- Исправленный блок Авторизации --- */
+        /* --- Блок авторизации с проверкой подтверждения Email --- */
         auth.onAuthStateChanged(user => {
-            currentUser = user;
             const panel = document.getElementById("authPanel");
             const adminTabBtn = document.getElementById("tabAdminBtn");
 
+            // ПРОВЕРКА ПОДТВЕРЖДЕНИЯ ПОЧТЫ
             if (user) {
+                if (!user.emailVerified) {
+                    currentUser = null;
+                    panel.innerHTML = `
+                        <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
+                        <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
+                    `;
+                    adminTabBtn.style.display = 'none';
+                    return;
+                }
+
+                currentUser = user;
                 const displayName = user.displayName || user.email.split('@')[0];
                 panel.innerHTML = `
                     <span style="color: var(--accent-orange); font-weight: bold;">👤 ${displayName}</span>
@@ -545,6 +573,7 @@
                     adminTabBtn.style.display = 'none';
                 }
             } else {
+                currentUser = null;
                 panel.innerHTML = `
                     <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
                     <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
@@ -557,6 +586,9 @@
 
         function openAuthModal(mode) {
             authMode = mode;
+            document.getElementById("authNotice").style.display = 'none';
+            document.getElementById("resendEmailBtn").style.display = 'none';
+
             const nickGroup = document.getElementById("authNicknameGroup");
             if (nickGroup) {
                 nickGroup.style.display = mode === 'register' ? 'block' : 'none';
@@ -576,7 +608,19 @@
             });
         }
 
-        // Исправленный обработчик отправки формы
+        // Повторная отправка письма с активацией
+        function resendVerification() {
+            const user = auth.currentUser;
+            if (user) {
+                user.sendEmailVerification().then(() => {
+                    alert("📧 Ссылка для подтверждения повторно отправлена на вашу почту!");
+                }).catch(err => alert("❌ Ошибка: " + err.message));
+            } else {
+                alert("⚠️ Сначала попытайтесь войти в аккаунт.");
+            }
+        }
+
+        // Обработка регистрации и входа
         document.getElementById("authForm").addEventListener("submit", function(e) {
             e.preventDefault();
             const email = document.getElementById("authEmail").value.trim();
@@ -591,22 +635,36 @@
 
                 auth.createUserWithEmailAndPassword(email, password)
                     .then((userCredential) => {
-                        // Обновляем профиль пользователя, устанавливая имя
-                        return userCredential.user.updateProfile({
+                        const user = userCredential.user;
+                        return user.updateProfile({
                             displayName: nickname
+                        }).then(() => {
+                            // Отправляем письмо с подтверждением
+                            return user.sendEmailVerification();
                         });
                     })
                     .then(() => {
-                        closeAuthModal();
-                        alert("✅ Вы успешно зарегистрировались!");
-                        // Принудительно вызываем событие изменения для гарантированного обновления UI
-                        auth.currentUser.reload();
+                        auth.signOut(); // Выходим из аккаунта до момента проверки почты
+                        document.getElementById("authNotice").innerText = "📧 Ссылка подтверждения отправлена на вашу почту! Перейдите по ней, чтобы активировать аккаунт.";
+                        document.getElementById("authNotice").style.display = 'block';
+                        document.getElementById("resendEmailBtn").style.display = 'inline-block';
+                        alert("✅ Аккаунт создан! Пожалуйста, проверьте почту и подтвердите регистрацию перед входом.");
                     })
                     .catch(error => alert("❌ Ошибка регистрации: " + error.message));
             } else {
                 auth.signInWithEmailAndPassword(email, password)
-                    .then(() => {
-                        closeAuthModal();
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        // ПРОВЕРКА ПОДТВЕРЖДЕНИЯ ЭЛЕКТРОННОЙ ПОЧТЫ ПРИ ВХОДЕ
+                        if (!user.emailVerified) {
+                            auth.signOut();
+                            document.getElementById("authNotice").innerText = "⚠️ Почта не подтверждена! Перейдите по ссылке в письме.";
+                            document.getElementById("authNotice").style.display = 'block';
+                            document.getElementById("resendEmailBtn").style.display = 'inline-block';
+                            alert("⛔ Вы не подтвердили Email! Проверьте папку 'Входящие' или 'Спам'.");
+                        } else {
+                            closeAuthModal();
+                        }
                     })
                     .catch(error => alert("❌ Ошибка входа: " + error.message));
             }
@@ -1010,7 +1068,7 @@
 
         function openEditor() {
             if (!currentUser) {
-                alert("🔒 Только зарегистрированные пользователи могут редактировать и сохранять сборки!");
+                alert("🔒 Только авторизованные пользователи с ПОДТВЕРЖДЕННОЙ почтой могут редактировать и сохранять сборки!");
                 openAuthModal('login');
                 return;
             }
@@ -1069,14 +1127,12 @@
 
             const safeKey = getSafeDbKey(currentHero);
             
-            // Сохраняем в главную базу
             db.ref(`builds/${safeKey}/${activeTalentId}`).set({
                 title: buildTitle,
                 category: buildCategory,
                 stages: newStages
             });
 
-            // Публикуем в сообщество
             const playerBuildData = {
                 hero: currentHero,
                 talentIndex: activeTalentId,
