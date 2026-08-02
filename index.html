@@ -326,7 +326,7 @@
     <header>
         <div>
             <h1>Dota 1x6 — База Сборок</h1>
-            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2 (Каин учтен)</p>
+            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2 (Каин учтен)[cite: 4]</p>
         </div>
         <div class="user-auth-panel" id="authPanel">
             <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
@@ -799,10 +799,22 @@
                             return info && info.behavior;
                         });
 
-                        apiAbilitiesMap[name] = realAbilities.slice(0, 4);
+                        // Записываем в apiAbilitiesMap только если в базе Firebase НЕТ кастомной иконки для этого слота!
+                        const safeKey = getSafeDbKey(name);
+                        if (!apiAbilitiesMap[name]) apiAbilitiesMap[name] = [];
+                        
+                        realAbilities.slice(0, 4).forEach((abName, idx) => {
+                            if (!HERO_ABILITIES_DATABASE[safeKey] || !HERO_ABILITIES_DATABASE[safeKey][idx]) {
+                                apiAbilitiesMap[name][idx] = abName;
+                            }
+                        });
+
                         realAbilities.forEach(a => fullSet.add(a));
                     }
                 });
+
+                // Добавим принудительно Black Hole на всякий случай, если ищете её
+                fullSet.add("enigma_black_hole");
 
                 allAbilitiesList = Array.from(fullSet);
                 renderBuild();
