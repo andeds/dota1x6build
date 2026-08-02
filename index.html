@@ -525,7 +525,7 @@
             return adminList.includes(currentUser.uid);
         }
 
-        /* --- Авторизация --- */
+        /* --- Исправленный блок Авторизации --- */
         auth.onAuthStateChanged(user => {
             currentUser = user;
             const panel = document.getElementById("authPanel");
@@ -576,20 +576,31 @@
             });
         }
 
+        // Исправленный обработчик отправки формы
         document.getElementById("authForm").addEventListener("submit", function(e) {
             e.preventDefault();
-            const email = document.getElementById("authEmail").value;
+            const email = document.getElementById("authEmail").value.trim();
             const password = document.getElementById("authPassword").value;
-            const nickname = document.getElementById("authNickname").value;
+            const nickname = document.getElementById("authNickname").value.trim();
 
             if (authMode === 'register') {
+                if (!nickname) {
+                    alert("⚠️ Пожалуйста, укажите ваш никнейм!");
+                    return;
+                }
+
                 auth.createUserWithEmailAndPassword(email, password)
                     .then((userCredential) => {
-                        return userCredential.user.updateProfile({ displayName: nickname || email.split('@')[0] });
+                        // Обновляем профиль пользователя, устанавливая имя
+                        return userCredential.user.updateProfile({
+                            displayName: nickname
+                        });
                     })
                     .then(() => {
                         closeAuthModal();
                         alert("✅ Вы успешно зарегистрировались!");
+                        // Принудительно вызываем событие изменения для гарантированного обновления UI
+                        auth.currentUser.reload();
                     })
                     .catch(error => alert("❌ Ошибка регистрации: " + error.message));
             } else {
