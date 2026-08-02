@@ -233,6 +233,7 @@
             transition: all 0.2s;
             pointer-events: auto !important;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: none; /* Управляется динамически через JS */
         }
         .edit-ability-btn:hover { 
             background: #3498db; 
@@ -881,7 +882,7 @@
             const stagesData = getCurrentStages();
             const isAdmin = checkIsAdmin();
 
-            let editAbilityBtnHtml = isAdmin ? `<button type="button" class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Изменить иконку</button>` : '';
+            let editAbilityBtnHtml = `<button type="button" class="edit-ability-btn" id="editAbilityBtn" style="display: ${isAdmin ? 'block' : 'none'};" onclick="openAbilityEditor()">✏️ Изменить иконку</button>`;
 
             let html = `
                 <div class="build-card">
