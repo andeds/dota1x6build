@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota 1x6 — База Сборок</title>
+    
+    <!-- Подключаем Firebase SDK через CDN (версия 8 с поддержкой классического JS) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #080a0e;
+            --card-bg: #12171f;
+            --panel-bg: #18202c;
+            --border-color: #232d3d;
+            --accent-orange: #f39c12;
+            --str-red: #e74c3c;
+            --agi-green: #2ecc71;
+            --int-blue: #3498db;
+            --uni-purple: #9b59b6;
+            --text-main: #e1e6eb;
+            --text-muted: #7f8c8d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; }
+        header { max-width: 1200px; margin: 0 auto 20px; text-align: center; }
+
+        .category-section {
+            max-width: 1200px; margin: 0 auto 20px;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 15px;
+        }
+        .attr-title { font-weight: bold; margin: 10px 0 5px; text-transform: uppercase; font-size: 0.9rem;}
+        .attr-title.str { color: var(--str-red); }
+        .attr-title.agi { color: var(--agi-green); }
+        .attr-title.int { color: var(--int-blue); }
+        .attr-title.uni { color: var(--uni-purple); }
+
+        .hero-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .hero-btn {
+            background: var(--panel-bg); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 6px 12px; border-radius: 4px; cursor: pointer;
+        }
+        .hero-btn.active { background: var(--accent-orange); color: #000; font-weight: bold; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+        .build-card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 20px; margin-bottom: 30px;
+        }
+        .build-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #1d2635; padding-bottom: 12px; }
+        
+        .talents-container { display: flex; gap: 8px; background: #090c10; padding: 5px; border-radius: 6px; border: 1px solid #1c2533; }
+        .talent-icon {
+            width: 42px; height: 42px; border-radius: 4px;
+            border: 2px solid #2a3546; background-size: cover; background-position: center;
+            cursor: pointer; transition: all 0.2s ease; filter: brightness(0.6) grayscale(0.3);
+        }
+        .talent-icon:hover { filter: brightness(0.9); transform: scale(1.05); }
+        .talent-icon.active { border-color: var(--accent-orange); filter: brightness(1.1) grayscale(0); box-shadow: 0 0 10px rgba(243, 156, 18, 0.9); }
+
+        .edit-btn {
+            background: #27ae60; color: #fff; border: none;
+            padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        .edit-btn:hover { background: #219150; }
+
+        .stages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; }
+        .stage-box {
+            background: var(--panel-bg); border: 1px solid #1e2837;
+            border-radius: 6px; padding: 12px; text-align: center;
+        }
+        .inventory-wrapper { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+        .inventory-grid {
+            display: grid; grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(2, 35px); gap: 4px; background: #090c10; padding: 4px;
+        }
+        .item-slot { width: 50px; height: 35px; background: #11161d; border: 1px solid #1a222e; font-size: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center;}
+        .item-slot img { width: 100%; height: 100%; object-fit: cover; }
+        .neutral-item { width: 35px; height: 35px; border-radius: 50%; background: #090c10; border: 1px solid #34495e; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+        .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 600px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; color: var(--accent-orange); font-size: 0.9rem;}
+        .form-group input { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dota 1x6 — База Сборок</h1>
+        <p style="color: var(--text-muted);">Облачная система сборок на базе Firebase Realtime Database</p>
+    </header>
+
+    <div class="category-section">
+        <div class="attr-title str">🔴 Strength</div>
+        <div class="hero-list" id="str-list"></div>
+        <div class="attr-title agi">🟢 Agility</div>
+        <div class="hero-list" id="agi-list"></div>
+        <div class="attr-title int">🔵 Intelligence</div>
+        <div class="hero-list" id="int-list"></div>
+        <div class="attr-title uni">🟣 Universal</div>
+        <div class="hero-list" id="uni-list"></div>
+    </div>
+
+    <div class="container" id="buildsContainer">Загрузка данных...</div>
+
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="margin-bottom: 15px;">Редактирование сборки</h3>
+            <form id="buildForm">
+                <div id="stagesFormContainer"></div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="closeEditor()">Отмена</button>
+                    <button type="submit" class="save-btn">Сохранить сборку</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Firebase с вашими ключами
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoDJiySpfKBu-CXBcdNIo0S-A5Bot05qc",
+            authDomain: "dota1x6build.firebaseapp.com",
+            databaseURL: "https://dota1x6build-default-rtdb.europe-west1.firebasedatabase.app", 
+            projectId: "dota1x6build",
+            storageBucket: "dota1x6build.firebasestorage.app",
+            messagingSenderId: "934335136834",
+            appId: "1:934335136834:web:4f751e7195cfd5df2919db",
+            measurementId: "G-JE2YY12MZS"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const HEROES_DATABASE = {
+            "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
+            "Agility": ["Anti-Mage", "Bloodseeker", "Broodmother", "Drow Ranger", "Ember Spirit", "Hoodwink", "Juggernaut", "Monkey King", "Morphling", "Phantom Assassin", "Razor", "Shadow Fiend", "Slark", "Sniper", "Templar Assassin", "Terrorblade", "Troll Warlord"],
+            "Intelligence": ["Crystal Maiden", "Invoker", "Leshrac", "Lina", "Muerta", "Puck", "Queen of Pain", "Skywrath Mage", "Tinker", "Witch Doctor", "Zeus"],
+            "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
+        };
+
+        const TALENT_ICONS = {
+            "Shadow Fiend": [
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_shadowraze1.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_necromastery.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_dark_lord.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/nevermore_requiem.png"
+            ],
+            "Juggernaut": [
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_blade_fury.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_healing_ward.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_blade_dance.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/juggernaut_omni_slash.png"
+            ],
+            "Wraith King": [
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_hellfire_blast.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_vampiric_aura.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_mortal_strike.png",
+                "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/skeleton_king_reincarnation.png"
+            ]
+        };
+
+        const DEFAULT_TALENT_ICONS = [
+            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg",
+            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg",
+            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg",
+            "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg"
+        ];
+
+        const ITEM_IMAGES = {
+            "wraith_band": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/wraith_band.png",
+            "bracer": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/bracer.png",
+            "null_talisman": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/null_talisman.png",
+            "magic_wand": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/magic_wand.png",
+            "bottle": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/bottle.png",
+            "power_treads": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/power_treads.png",
+            "phase_boots": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/phase_boots.png",
+            "kaya": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/kaya.png",
+            "black_king_bar": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/black_king_bar.png",
+            "blink": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/blink.png",
+            "satanic": "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/satanic.png"
+        };
+
+        const DEFAULT_STAGES = [
+            { "time": "Начало игры ~4мин", "items": ["bracer", "magic_wand", "bottle"], "neutral": "seeds_of_serenity" },
+            { "time": "Ранняя игра ~12мин", "items": ["power_treads", "kaya", "magic_wand"], "neutral": "occult_orb" },
+            { "time": "Середина игры ~25мин", "items": ["power_treads", "black_king_bar", "blink"], "neutral": "penta_edged_sword" },
+            { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "blink"], "neutral": "apex" }
+        ];
+
+        let BUILDS_DATABASE = {};
+        let currentHero = "Shadow Fiend";
+        let activeTalentId = 0;
+
+        // Синхронизация данных в реальном времени с Firebase
+        db.ref('builds').on('value', (snapshot) => {
+            BUILDS_DATABASE = snapshot.val() || {};
+            renderBuild();
+        });
+
+        function renderNavigation() {
+            for (const [attr, heroes] of Object.entries(HEROES_DATABASE)) {
+                const listId = attr.substring(0, 3).toLowerCase() + "-list";
+                const container = document.getElementById(listId);
+                if (container) {
+                    container.innerHTML = heroes.map(h => `
+                        <button class="hero-btn ${h === currentHero ? 'active' : ''}" onclick="selectHero('${h}')">
+                            ${h}
+                        </button>
+                    `).join('');
+                }
+            }
+        }
+
+        function selectHero(hero) {
+            currentHero = hero;
+            activeTalentId = 0;
+            renderNavigation();
+            renderBuild();
+        }
+
+        function selectTalent(idx) {
+            activeTalentId = idx;
+            renderBuild();
+        }
+
+        function getCurrentStages() {
+            const safeHeroKey = currentHero.replace(/\s+/g, '_');
+            if (BUILDS_DATABASE[safeHeroKey] && BUILDS_DATABASE[safeHeroKey][String(activeTalentId)]) {
+                return BUILDS_DATABASE[safeHeroKey][String(activeTalentId)];
+            }
+            return DEFAULT_STAGES;
+        }
+
+        function renderBuild() {
+            const container = document.getElementById("buildsContainer");
+            const stagesData = getCurrentStages();
+            const icons = TALENT_ICONS[currentHero] || DEFAULT_TALENT_ICONS;
+
+            let html = `
+                <div class="build-card">
+                    <div class="build-header">
+                        <div>
+                            <h2>${currentHero.toUpperCase()}</h2>
+                        </div>
+                        <div class="talents-container">
+                            ${icons.map((iconUrl, idx) => `
+                                <div class="talent-icon ${idx === activeTalentId ? 'active' : ''}"
+                                     style="background-image: url('${iconUrl}')"
+                                     title="Способность #${idx + 1}"
+                                     onclick="selectTalent(${idx})">
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button class="edit-btn" onclick="openEditor()">✏️ Изменить сборку</button>
+                    </div>
+
+                    <div class="stages-grid">
+                        ${stagesData.map(stage => {
+                            let itemSlotsHtml = '';
+                            for (let i = 0; i < 6; i++) {
+                                const itemKey = stage.items ? stage.items[i] : null;
+                                const imgSrc = itemKey && ITEM_IMAGES[itemKey] ? ITEM_IMAGES[itemKey] : '';
+                                itemSlotsHtml += `<div class="item-slot">${imgSrc ? `<img src="${imgSrc}">` : (itemKey || '')}</div>`;
+                            }
+                            const neutralImg = stage.neutral && ITEM_IMAGES[stage.neutral] ? ITEM_IMAGES[stage.neutral] : '';
+
+                            return `
+                                <div class="stage-box">
+                                    <div class="inventory-wrapper">
+                                        <div class="inventory-grid">${itemSlotsHtml}</div>
+                                        <div class="neutral-item">${neutralImg ? `<img src="${neutralImg}">` : (stage.neutral || '')}</div>
+                                    </div>
+                                    <div style="font-size:0.85rem; font-weight:bold;">${stage.time}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        function openEditor() {
+            const stagesData = getCurrentStages();
+            const container = document.getElementById("stagesFormContainer");
+            document.getElementById("modalTitle").innerText = `Редактирование: ${currentHero} (Талант #${activeTalentId + 1})`;
+            
+            container.innerHTML = stagesData.map((stage, sIdx) => `
+                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px;">
+                    <div class="form-group">
+                        <label>Этап / Тайминг</label>
+                        <input type="text" id="stage_time_${sIdx}" value="${stage.time}">
+                    </div>
+                    <div class="form-group">
+                        <label>Предметы (через запятую, до 6 шт):</label>
+                        <input type="text" id="stage_items_${sIdx}" value="${stage.items ? stage.items.join(', ') : ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Нейтральный предмет:</label>
+                        <input type="text" id="stage_neutral_${sIdx}" value="${stage.neutral || ''}">
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById("editModal").style.display = "flex";
+        }
+
+        function closeEditor() {
+            document.getElementById("editModal").style.display = "none";
+        }
+
+        document.getElementById("buildForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const newStages = [];
+
+            for (let sIdx = 0; sIdx < 4; sIdx++) {
+                const time = document.getElementById(`stage_time_${sIdx}`).value;
+                const itemsRaw = document.getElementById(`stage_items_${sIdx}`).value;
+                const neutral = document.getElementById(`stage_neutral_${sIdx}`).value.trim();
+
+                const items = itemsRaw.split(',').map(i => i.trim()).filter(i => i.length > 0);
+                newStages.push({ time, items, neutral });
+            }
+
+            // Отправка в облако Firebase
+            const safeHeroKey = currentHero.replace(/\s+/g, '_');
+            db.ref(`builds/${safeHeroKey}/${activeTalentId}`).set(newStages, (error) => {
+                if (error) {
+                    alert("❌ Ошибка записи: " + error.message);
+                } else {
+                    closeEditor();
+                    alert("✅ Сборка успешно сохранена в облаке!");
+                }
+            });
+        });
+
+        renderNavigation();
+    </script>
+</body>
+</html>
