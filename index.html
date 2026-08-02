@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dota 1x6 — База Сборок</title>
     
-    <!-- Firebase SDK v8 -->
+    <!-- Firebase SDK v8 (App, Database, Auth) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
         :root {
@@ -26,7 +27,57 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; }
-        header { max-width: 1200px; margin: 0 auto 20px; text-align: center; }
+        
+        header { 
+            max-width: 1200px; 
+            margin: 0 auto 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .user-auth-panel {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .auth-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent-orange);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .auth-btn:hover { background: var(--accent-orange); color: #000; }
+
+        /* Вкладки навигации */
+        .tab-navigation {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .tab-btn.active {
+            background: var(--accent-orange);
+            color: #000;
+            border-color: var(--accent-orange);
+        }
 
         .category-section {
             max-width: 1200px; margin: 0 auto 20px;
@@ -49,15 +100,52 @@
         .hero-btn.active { background: var(--accent-orange); color: #000; font-weight: bold; }
 
         .container { max-width: 1200px; margin: 0 auto; }
+        
         .build-card {
             background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 8px; padding: 20px; margin-bottom: 30px;
+            border-radius: 8px; padding: 20px; margin-bottom: 20px;
         }
-        .build-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #1d2635; padding-bottom: 12px; }
         
-        .talents-container { display: flex; gap: 8px; background: #090c10; padding: 5px; border-radius: 6px; border: 1px solid #1c2533; }
+        .build-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 20px; border-bottom: 1px solid #1d2635; padding-bottom: 12px; 
+        }
+
+        .author-tag {
+            font-size: 0.85rem;
+            color: var(--accent-orange);
+            background: #18202c;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .build-content-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .talents-column-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .talents-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #090c10;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1c2533;
+            min-width: 68px;
+            align-items: center;
+        }
+
         .talent-icon {
-            width: 48px; height: 48px; border-radius: 4px;
+            width: 48px; height: 48px; border-radius: 6px;
             border: 2px solid #2a3546; background-size: cover; background-position: center;
             cursor: pointer; transition: all 0.2s ease; filter: brightness(0.6) grayscale(0.3);
             background-color: #111;
@@ -68,10 +156,24 @@
         .edit-btn {
             background: #27ae60; color: #fff; border: none;
             padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;
+            transition: background 0.2s;
         }
         .edit-btn:hover { background: #219150; }
 
-        .stages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .edit-ability-btn {
+            background: #2980b9; color: #fff; border: none;
+            padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold;
+            text-align: center; line-height: 1.2;
+        }
+        .edit-ability-btn:hover { background: #3498db; }
+
+        .stages-grid { 
+            flex-grow: 1;
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 15px; 
+        }
+        
         .stage-box {
             background: var(--panel-bg); border: 1px solid #1e2837;
             border-radius: 6px; padding: 12px; text-align: center;
@@ -95,6 +197,34 @@
         }
         .neutral-item img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
+        .ability-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+            gap: 6px;
+            max-height: 350px;
+            overflow-y: auto;
+            background: #090c10;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-top: 10px;
+        }
+        .ability-picker-item {
+            width: 46px;
+            height: 46px;
+            border-radius: 4px;
+            border: 1px solid #232d3d;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.1s;
+        }
+        .ability-picker-item:hover {
+            transform: scale(1.1);
+            border-color: var(--accent-orange);
+            z-index: 2;
+        }
+
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 650px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
         .form-group { margin-bottom: 15px; text-align: left; }
@@ -102,17 +232,30 @@
         .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; }
+        .cancel-btn { background: #7f8c8d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Dota 1x6 — База Сборок</h1>
-        <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2</p>
+        <div>
+            <h1>Dota 1x6 — База Сборок</h1>
+            <p style="color: var(--text-muted);">Иконки кастомных способностей и предметов Dota 2</p>
+        </div>
+        <div class="user-auth-panel" id="authPanel">
+            <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
+            <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
+        </div>
     </header>
 
-    <div class="category-section">
+    <!-- Вкладки верхнего уровня -->
+    <div class="tab-navigation">
+        <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">Главная база</button>
+        <button class="tab-btn" id="tabCommunityBtn" onclick="switchTab('community')">Сборки от игроков</button>
+    </div>
+
+    <!-- Раздел выбора героя (Только на главной) -->
+    <div class="category-section" id="heroCategorySection">
         <div class="attr-title str">🔴 Strength</div>
         <div class="hero-list" id="str-list"></div>
         <div class="attr-title agi">🟢 Agility</div>
@@ -123,8 +266,35 @@
         <div class="hero-list" id="uni-list"></div>
     </div>
 
+    <!-- Основной контейнер сборок -->
     <div class="container" id="buildsContainer">Загрузка данных...</div>
 
+    <!-- Модальное окно Авторизации / Регистрации -->
+    <div class="modal" id="authModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 id="authModalTitle" style="margin-bottom: 15px;">Авторизация</h3>
+            <form id="authForm">
+                <div class="form-group" id="nicknameGroup" style="display: none;">
+                    <label>Никнейм игрока:</label>
+                    <input type="text" id="authNickname" placeholder="Например: Miracle">
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="authEmail" required placeholder="user@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Пароль:</label>
+                    <input type="password" id="authPassword" required placeholder="******">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="closeAuthModal()">Отмена</button>
+                    <button type="submit" class="save-btn" id="authSubmitBtn">Войти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно для сборки предметов -->
     <div class="modal" id="editModal">
         <div class="modal-content">
             <h3 id="modalTitle" style="margin-bottom: 15px;">Редактирование сборки</h3>
@@ -135,6 +305,22 @@
                     <button type="submit" class="save-btn">Сохранить сборку</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно выбора иконки способности -->
+    <div class="modal" id="editAbilityModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 10px;">Выберите иконку способности</h3>
+            <div class="form-group">
+                <input type="text" id="abilitySearchInput" placeholder="Поиск по названию..." oninput="filterAbilityPicker()">
+            </div>
+            
+            <div class="ability-picker-grid" id="abilityPickerGrid"></div>
+
+            <div class="modal-actions">
+                <button type="button" class="cancel-btn" onclick="closeAbilityEditor()">Закрыть</button>
+            </div>
         </div>
     </div>
 
@@ -152,6 +338,11 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let authMode = 'login'; // 'login' или 'register'
+        let activeTab = 'main'; // 'main' или 'community'
 
         const HEROES_DATABASE = {
             "Strength": ["Alchemist", "Axe", "Bristleback", "Centaur Warrunner", "Huskar", "Legion Commander", "Lifestealer", "Mars", "Night Stalker", "Ogre Magi", "Primal Beast", "Pudge", "Sven", "Wraith King"],
@@ -160,7 +351,6 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Кастомная раскладка способностей под Dota 1x6 (для переопределения)
         const CUSTOM_HERO_ABILITIES = {
             "Alchemist": ["alchemist_acid_spray", "alchemist_unstable_concoction", "alchemist_corrosive_weaponry", "alchemist_chemical_rage"],
             "Morphling": ["morphling_waveform", "morphling_adaptive_strike_agi", "morphling_morph_agi", "morphling_replicate"],
@@ -173,7 +363,8 @@
             "Broodmother": ["broodmother_spawn_spiderlings", "broodmother_spin_web", "broodmother_incapacitating_bite", "broodmother_insatiable_hunger"],
             "Bloodseeker": ["bloodseeker_bloodrage", "bloodseeker_blood_bath", "bloodseeker_thirst", "bloodseeker_rupture"],
             "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
-            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"]
+            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
+            "Nature's Prophet": ["furion_sprout", "furion_teleportation", "furion_force_of_nature", "furion_wrath_of_nature"]
         };
 
         const POPULAR_ITEMS = [
@@ -185,11 +376,100 @@
         ];
 
         let apiAbilitiesMap = {};
+        let allAbilitiesList = [];
         let BUILDS_DATABASE = {};
+        let PLAYER_BUILDS_DATABASE = {};
         let currentHero = "Alchemist";
         let activeTalentId = 0;
 
-        // Фильтрованная загрузка 1, 2, 3 и ульты с OpenDota
+        function getSafeDbKey(name) {
+            return name.replace(/['\s]/g, '_');
+        }
+
+        /* --- Авторизация --- */
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            const panel = document.getElementById("authPanel");
+            if (user) {
+                const displayName = user.displayName || user.email.split('@')[0];
+                panel.innerHTML = `
+                    <span style="color: var(--accent-orange); font-weight: bold;">👤 ${displayName}</span>
+                    <button class="auth-btn" onclick="logout()">Выйти</button>
+                `;
+            } else {
+                panel.innerHTML = `
+                    <button class="auth-btn" onclick="openAuthModal('login')">Вход</button>
+                    <button class="auth-btn" onclick="openAuthModal('register')">Регистрация</button>
+                `;
+            }
+        });
+
+        function openAuthModal(mode) {
+            authMode = mode;
+            document.getElementById("authNicknameGroup").style.display = mode === 'register' ? 'block' : 'none';
+            document.getElementById("authModalTitle").innerText = mode === 'register' ? 'Регистрация' : 'Авторизация';
+            document.getElementById("authSubmitBtn").innerText = mode === 'register' ? 'Зарегистрироваться' : 'Войти';
+            document.getElementById("authModal").style.display = 'flex';
+        }
+
+        function closeAuthModal() {
+            document.getElementById("authModal").style.display = 'none';
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        document.getElementById("authForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const email = document.getElementById("authEmail").value;
+            const password = document.getElementById("authPassword").value;
+            const nickname = document.getElementById("authNickname").value;
+
+            if (authMode === 'register') {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        return userCredential.user.updateProfile({ displayName: nickname || email.split('@')[0] });
+                    })
+                    .then(() => {
+                        closeAuthModal();
+                        alert("✅ Вы успешно зарегистрировались!");
+                    })
+                    .catch(error => alert("❌ Ошибка регистрации: " + error.message));
+            } else {
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        closeAuthModal();
+                    })
+                    .catch(error => alert("❌ Ошибка входа: " + error.message));
+            }
+        });
+
+        /* --- Переключение вкладок --- */
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById("tabMainBtn").classList.toggle("active", tab === 'main');
+            document.getElementById("tabCommunityBtn").classList.toggle("active", tab === 'community');
+            document.getElementById("heroCategorySection").style.display = tab === 'main' ? 'block' : 'none';
+
+            if (tab === 'main') {
+                renderBuild();
+            } else {
+                renderCommunityBuilds();
+            }
+        }
+
+        /* --- Firebase Listeners --- */
+        db.ref('builds').on('value', (snapshot) => {
+            BUILDS_DATABASE = snapshot.val() || {};
+            if (activeTab === 'main') renderBuild();
+        });
+
+        db.ref('player_builds').on('value', (snapshot) => {
+            PLAYER_BUILDS_DATABASE = snapshot.val() || {};
+            if (activeTab === 'community') renderCommunityBuilds();
+        });
+
         async function loadFallbackHeroAbilities() {
             try {
                 const res = await fetch("https://api.opendota.com/api/heroStats");
@@ -201,9 +481,11 @@
                 const abilitiesInfoRes = await fetch("https://api.opendota.com/api/constants/abilities");
                 const abilitiesInfo = await abilitiesInfoRes.json();
 
+                const fullSet = new Set();
+
                 heroes.forEach(h => {
                     const name = h.localized_name;
-                    const heroKey = h.name; // Например "npc_dota_hero_alchemist"
+                    const heroKey = h.name;
 
                     if (capabilities[heroKey] && capabilities[heroKey].abilities) {
                         const realAbilities = capabilities[heroKey].abilities.filter(ab => {
@@ -213,23 +495,27 @@
                         });
 
                         apiAbilitiesMap[name] = realAbilities.slice(0, 4);
+                        realAbilities.forEach(a => fullSet.add(a));
                     }
                 });
 
+                allAbilitiesList = Array.from(fullSet);
                 renderBuild();
             } catch (e) {
                 console.log("Ошибка API OpenDota:", e);
             }
         }
 
-        function getAbilityIconUrl(hero, index) {
+        function getAbilityIconUrl(abName) {
+            return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
+        }
+
+        function getHeroAbilityIconUrl(hero, index) {
             if (CUSTOM_HERO_ABILITIES[hero] && CUSTOM_HERO_ABILITIES[hero][index]) {
-                const abName = CUSTOM_HERO_ABILITIES[hero][index];
-                return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
+                return getAbilityIconUrl(CUSTOM_HERO_ABILITIES[hero][index]);
             }
             if (apiAbilitiesMap[hero] && apiAbilitiesMap[hero][index]) {
-                const abName = apiAbilitiesMap[hero][index];
-                return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
+                return getAbilityIconUrl(apiAbilitiesMap[hero][index]);
             }
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
@@ -247,22 +533,19 @@
             { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "swift_blink", "butterfly", "daedalus"], "neutral": "apex" }
         ];
 
-        // Слушатель Firebase
-        db.ref('builds').on('value', (snapshot) => {
-            BUILDS_DATABASE = snapshot.val() || {};
-            renderBuild();
-        });
-
         function renderNavigation() {
             for (const [attr, heroes] of Object.entries(HEROES_DATABASE)) {
                 const listId = attr.substring(0, 3).toLowerCase() + "-list";
                 const container = document.getElementById(listId);
                 if (container) {
-                    container.innerHTML = heroes.map(h => `
-                        <button class="hero-btn ${h === currentHero ? 'active' : ''}" onclick="selectHero('${h}')">
-                            ${h}
-                        </button>
-                    `).join('');
+                    container.innerHTML = heroes.map(h => {
+                        const escapedName = h.replace(/'/g, "\\'");
+                        return `
+                            <button class="hero-btn ${h === currentHero ? 'active' : ''}" onclick="selectHero('${escapedName}')">
+                                ${h}
+                            </button>
+                        `;
+                    }).join('');
                 }
             }
         }
@@ -280,8 +563,7 @@
         }
 
         function getCurrentStages() {
-            const keyWithUnderscores = currentHero.replace(/\s+/g, '_');
-            
+            const keyWithUnderscores = getSafeDbKey(currentHero);
             if (BUILDS_DATABASE[currentHero] && BUILDS_DATABASE[currentHero][String(activeTalentId)]) {
                 return BUILDS_DATABASE[currentHero][String(activeTalentId)];
             }
@@ -298,53 +580,139 @@
             let html = `
                 <div class="build-card">
                     <div class="build-header">
-                        <div>
-                            <h2>${currentHero.toUpperCase()}</h2>
-                        </div>
-                        <div class="talents-container">
-                            ${[0, 1, 2, 3].map(idx => {
-                                const iconUrl = getAbilityIconUrl(currentHero, idx);
-                                return `
-                                    <div class="talent-icon ${idx === activeTalentId ? 'active' : ''}"
-                                         style="background-image: url('${iconUrl}')"
-                                         title="Способность #${idx + 1}"
-                                         onclick="selectTalent(${idx})">
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
+                        <h2>${currentHero.toUpperCase()}</h2>
                         <button class="edit-btn" onclick="openEditor()">✏️ Изменить сборку</button>
                     </div>
 
-                    <div class="stages-grid">
-                        ${stagesData.map(stage => {
-                            let itemSlotsHtml = '';
-                            for (let i = 0; i < 6; i++) {
-                                const itemKey = stage.items ? stage.items[i] : null;
-                                const imgSrc = getItemIconUrl(itemKey);
-                                itemSlotsHtml += `
-                                    <div class="item-slot">
-                                        ${itemKey ? `<img src="${imgSrc}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${itemKey}';" title="${itemKey}">` : ''}
-                                    </div>`;
-                            }
-                            const neutralImg = getItemIconUrl(stage.neutral);
-
-                            return `
-                                <div class="stage-box">
-                                    <div class="inventory-wrapper">
-                                        <div class="inventory-grid">${itemSlotsHtml}</div>
-                                        <div class="neutral-item">
-                                            ${stage.neutral ? `<img src="${neutralImg}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${stage.neutral}';" title="${stage.neutral}">` : ''}
+                    <div class="build-content-layout">
+                        <div class="talents-column-wrapper">
+                            <button class="edit-ability-btn" onclick="openAbilityEditor()">✏️ Изменить<br>иконку</button>
+                            <div class="talents-column">
+                                ${[0, 1, 2, 3].map(idx => {
+                                    const iconUrl = getHeroAbilityIconUrl(currentHero, idx);
+                                    return `
+                                        <div class="talent-icon ${idx === activeTalentId ? 'active' : ''}"
+                                             style="background-image: url('${iconUrl}')"
+                                             title="Способность #${idx + 1}"
+                                             onclick="selectTalent(${idx})">
                                         </div>
-                                    </div>
-                                    <div style="font-size:0.85rem; font-weight:bold;">${stage.time || ''}</div>
-                                </div>
-                            `;
-                        }).join('')}
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <div class="stages-grid">
+                            ${stagesData.map(stage => renderStageBox(stage)).join('')}
+                        </div>
                     </div>
                 </div>
             `;
             container.innerHTML = html;
+        }
+
+        function renderStageBox(stage) {
+            let itemSlotsHtml = '';
+            for (let i = 0; i < 6; i++) {
+                const itemKey = stage.items ? stage.items[i] : null;
+                const imgSrc = getItemIconUrl(itemKey);
+                itemSlotsHtml += `
+                    <div class="item-slot">
+                        ${itemKey ? `<img src="${imgSrc}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${itemKey}';" title="${itemKey}">` : ''}
+                    </div>`;
+            }
+            const neutralImg = getItemIconUrl(stage.neutral);
+
+            return `
+                <div class="stage-box">
+                    <div class="inventory-wrapper">
+                        <div class="inventory-grid">${itemSlotsHtml}</div>
+                        <div class="neutral-item">
+                            ${stage.neutral ? `<img src="${neutralImg}" onerror="this.onerror=null; this.remove(); this.parentElement.innerText='${stage.neutral}';" title="${stage.neutral}">` : ''}
+                        </div>
+                    </div>
+                    <div style="font-size:0.85rem; font-weight:bold;">${stage.time || ''}</div>
+                </div>
+            `;
+        }
+
+        /* --- Отрисовка Вкладки "Сборки от игроков" --- */
+        function renderCommunityBuilds() {
+            const container = document.getElementById("buildsContainer");
+            const keys = Object.keys(PLAYER_BUILDS_DATABASE);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 40px;">Пока нет сборок от игроков. Авторизуйтесь и создайте первую!</p>`;
+                return;
+            }
+
+            let html = '';
+            // Показываем в обратном порядке (новые сверху)
+            keys.reverse().forEach(key => {
+                const build = PLAYER_BUILDS_DATABASE[key];
+                const heroName = build.hero || "Герой";
+                const author = build.author || "Аноним";
+                const talentIdx = build.talentIndex || 0;
+                const iconUrl = getHeroAbilityIconUrl(heroName, talentIdx);
+
+                html += `
+                    <div class="build-card">
+                        <div class="build-header">
+                            <div>
+                                <h2 style="display:inline-block; margin-right: 10px;">${heroName.toUpperCase()}</h2>
+                                <span class="author-tag">Автор: ${author}</span>
+                            </div>
+                        </div>
+
+                        <div class="build-content-layout">
+                            <div class="talents-column-wrapper">
+                                <div class="talents-column">
+                                    <div class="talent-icon active" style="background-image: url('${iconUrl}')"></div>
+                                </div>
+                            </div>
+
+                            <div class="stages-grid">
+                                ${build.stages ? build.stages.map(stage => renderStageBox(stage)).join('') : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function openAbilityEditor() {
+            document.getElementById("abilitySearchInput").value = "";
+            filterAbilityPicker();
+            document.getElementById("editAbilityModal").style.display = "flex";
+        }
+
+        function closeAbilityEditor() {
+            document.getElementById("editAbilityModal").style.display = "none";
+        }
+
+        function filterAbilityPicker() {
+            const query = document.getElementById("abilitySearchInput").value.trim().toLowerCase();
+            const grid = document.getElementById("abilityPickerGrid");
+            
+            const filtered = allAbilitiesList.filter(ab => ab.toLowerCase().includes(query));
+
+            grid.innerHTML = filtered.map(ab => `
+                <div class="ability-picker-item" 
+                     style="background-image: url('${getAbilityIconUrl(ab)}')" 
+                     title="${ab}"
+                     onclick="selectAbilityIcon('${ab}')">
+                </div>
+            `).join('');
+        }
+
+        function selectAbilityIcon(abName) {
+            if (!CUSTOM_HERO_ABILITIES[currentHero]) {
+                CUSTOM_HERO_ABILITIES[currentHero] = [];
+            }
+            CUSTOM_HERO_ABILITIES[currentHero][activeTalentId] = abName;
+            renderBuild();
+            closeAbilityEditor();
         }
 
         function appendItemToInput(stageIdx, item) {
@@ -358,6 +726,12 @@
         }
 
         function openEditor() {
+            if (!currentUser) {
+                alert("🔒 Только зарегистрированные пользователи могут редактировать и сохранять сборки!");
+                openAuthModal('login');
+                return;
+            }
+
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
             document.getElementById("modalTitle").innerText = `Редактирование: ${currentHero} (Способность #${activeTalentId + 1})`;
@@ -406,12 +780,27 @@
                 newStages.push({ time, items, neutral });
             }
 
-            db.ref(`builds/${currentHero}/${activeTalentId}`).set(newStages, (error) => {
+            const safeKey = getSafeDbKey(currentHero);
+            
+            // 1. Сохраняем в основную базу героя
+            db.ref(`builds/${safeKey}/${activeTalentId}`).set(newStages);
+
+            // 2. Публикуем в коллекцию сборок игроков
+            const playerBuildData = {
+                hero: currentHero,
+                talentIndex: activeTalentId,
+                author: currentUser.displayName || currentUser.email.split('@')[0],
+                authorUid: currentUser.uid,
+                stages: newStages,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            db.ref('player_builds').push(playerBuildData, (error) => {
                 if (error) {
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
                     closeEditor();
-                    alert("✅ Сборка успешно сохранена!");
+                    alert("✅ Сборка успешно сохранена и опубликована во вкладку игрокам!");
                 }
             });
         });
