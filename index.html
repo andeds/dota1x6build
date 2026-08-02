@@ -233,7 +233,7 @@
             transition: all 0.2s;
             pointer-events: auto !important;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: none; /* Управляется динамически через JS */
+            display: block; /* Видна всем пользователям */
         }
         .edit-ability-btn:hover { 
             background: #3498db; 
@@ -880,9 +880,8 @@
         function renderBuild() {
             const container = document.getElementById("buildsContainer");
             const stagesData = getCurrentStages();
-            const isAdmin = checkIsAdmin();
 
-            let editAbilityBtnHtml = `<button type="button" class="edit-ability-btn" id="editAbilityBtn" style="display: ${isAdmin ? 'block' : 'none'};" onclick="openAbilityEditor()">✏️ Изменить иконку</button>`;
+            let editAbilityBtnHtml = `<button type="button" class="edit-ability-btn" id="editAbilityBtn" onclick="openAbilityEditor()">✏️ Изменить иконку</button>`;
 
             let html = `
                 <div class="build-card">
@@ -998,10 +997,6 @@
         }
 
         function openAbilityEditor() {
-            if (!checkIsAdmin()) {
-                alert("⛔ Доступно только администраторам! Убедитесь, что вы авторизованы и ваш UID добавлен в список администраторов.");
-                return;
-            }
             document.getElementById("abilitySearchInput").value = "";
             filterAbilityPicker();
             document.getElementById("editAbilityModal").style.display = "flex";
@@ -1026,11 +1021,6 @@
         }
 
         function selectAbilityIcon(abName) {
-            if (!checkIsAdmin()) {
-                alert("⛔ Ошибка: у вас нет прав администратора для изменения иконок.");
-                return;
-            }
-
             const safeKey = getSafeDbKey(currentHero);
             
             if (!HERO_ABILITIES_DATABASE[safeKey]) {
