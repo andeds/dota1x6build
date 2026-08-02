@@ -99,7 +99,7 @@
         .modal-content { background: var(--card-bg); padding: 25px; border-radius: 8px; width: 90%; max-width: 650px; border: 1px solid var(--accent-orange); max-height: 90vh; overflow-y: auto;}
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; margin-bottom: 5px; color: var(--accent-orange); font-size: 0.9rem;}
-        .form-group input { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; background: var(--panel-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; }
         .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .save-btn { background: var(--accent-orange); color: #000; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -110,7 +110,7 @@
 
     <header>
         <h1>Dota 1x6 — База Сборок</h1>
-        <p style="color: var(--text-muted);">Иконки всех героев и предметов подгружаются из CDN Dota 2</p>
+        <p style="color: var(--text-muted);">Иконки всех героев и предметов загружаются в реальном времени из Dota 2 API</p>
     </header>
 
     <div class="category-section">
@@ -161,30 +161,51 @@
             "Universal": ["Abaddon", "Arc Warden", "Bane", "Enigma", "Marci", "Nature's Prophet", "Nyx Assassin", "Pangolier", "Sand King", "Snapfire", "Vengeful Spirit"]
         };
 
-        // Сопоставление имён героев и их способностей из Dota 2 CDN
-        const HERO_ABILITIES = {
-            "Shadow Fiend": ["nevermore_shadowraze1", "nevermore_necromastery", "nevermore_dark_lord", "nevermore_requiem"],
-            "Juggernaut": ["juggernaut_blade_fury", "juggernaut_healing_ward", "juggernaut_blade_dance", "juggernaut_omni_slash"],
-            "Wraith King": ["skeleton_king_hellfire_blast", "skeleton_king_vampiric_aura", "skeleton_king_mortal_strike", "skeleton_king_reincarnation"],
-            "Axe": ["axe_berserkers_call", "axe_battle_hunger", "axe_counter_helix", "axe_culling_blade"],
-            "Pudge": ["pudge_meat_hook", "pudge_rot", "pudge_flesh_heap", "pudge_dismember"],
-            "Sven": ["sven_storm_bolt", "sven_great_cleave", "sven_warcry", "sven_gods_strength"],
-            "Anti-Mage": ["antimage_mana_break", "antimage_blink", "antimage_counterspell", "antimage_mana_void"],
-            "Drow Ranger": ["drow_ranger_frost_arrows", "drow_ranger_gust", "drow_ranger_multishot", "drow_ranger_marksmanship"],
-            "Invoker": ["invoker_quas", "invoker_wex", "invoker_exort", "invoker_invoke"],
-            "Zeus": ["zuus_arc_lightning", "zuus_lightning_bolt", "zuus_static_field", "zuus_thundergods_wrath"]
-        };
+        // Популярные предметы Dota 2 для быстрой вставки из списка
+        const POPULAR_ITEMS = [
+            "tango", "faerie_fire", "healing_salve", "clarity", "quelling_blade", "circlet", "gauntlets", "slippers", "mantle", "branches", "magic_wand", "bracer", "wraith_band", "null_talisman", "bottle",
+            "boots", "power_treads", "phase_boots", "arcane_boots", "tranquil_boots", "travel_boots",
+            "hand_of_midas", "orb_of_corrosion", "falcon_blade", "vanguard", "mask_of_madness", "helm_of_the_dominator", "dragon_lance", "kaya", "sange", "yasha",
+            "black_king_bar", "blink", "swift_blink", "arcane_blink", "overwhelming_blink", "blade_mail", "shadow_blade", "silver_edge", "desolator", "bf", "manta", "sange_and_yasha", "kaya_and_sange",
+            "satanic", "butterfly", "daedalus", "monkey_king_bar", "abyssal_blade", "bloodthorn", "heart", "assault", "shivas_guard", "sphere", "refresher", "octarine_core", "aghanims_scepter"
+        ];
 
-        // Функция генерации URL для иконки способности
-        function getAbilityIconUrl(hero, index) {
-            if (HERO_ABILITIES[hero] && HERO_ABILITIES[hero][index]) {
-                return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${HERO_ABILITIES[hero][index]}.png`;
+        let heroAbilitiesMap = {};
+        let BUILDS_DATABASE = {};
+        let currentHero = "Shadow Fiend";
+        let activeTalentId = 0;
+
+        // Загрузка способностей всех героев из OpenDota API
+        async function loadHeroAbilities() {
+            try {
+                const res = await fetch("https://api.opendota.com/api/heroStats");
+                const heroes = await res.json();
+                
+                const capabilitiesRes = await fetch("https://api.opendota.com/api/constants/hero_abilities");
+                const capabilities = await capabilitiesRes.json();
+
+                heroes.forEach(h => {
+                    const name = h.localized_name;
+                    const heroKey = h.name; // например, npc_dota_hero_nevermore
+                    if (capabilities[heroKey] && capabilities[heroKey].abilities) {
+                        // Берём первые 4 активные способности героя
+                        heroAbilitiesMap[name] = capabilities[heroKey].abilities.filter(a => a !== "generic_hidden").slice(0, 4);
+                    }
+                });
+                renderBuild();
+            } catch (e) {
+                console.log("Загрузка API способностей...", e);
             }
-            // Стандартный плейсхолдер таланта, если способность не задана вручную
+        }
+
+        function getAbilityIconUrl(hero, index) {
+            if (heroAbilitiesMap[hero] && heroAbilitiesMap[hero][index]) {
+                const abName = heroAbilitiesMap[hero][index];
+                return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/abilities/${abName}.png`;
+            }
             return "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/statprog/talent_tree.svg";
         }
 
-        // Функция генерации URL предмета из Valve CDN
         function getItemIconUrl(itemName) {
             if (!itemName) return '';
             const cleanName = itemName.trim().toLowerCase().replace(/\s+/g, '_').replace(/'/g, '');
@@ -197,10 +218,6 @@
             { "time": "Середина игры ~25мин", "items": ["power_treads", "black_king_bar", "blink", "desolator"], "neutral": "penta_edged_sword" },
             { "time": "Поздняя игра 31+мин", "items": ["power_treads", "black_king_bar", "satanic", "swift_blink", "butterfly", "daedalus"], "neutral": "apex" }
         ];
-
-        let BUILDS_DATABASE = {};
-        let currentHero = "Shadow Fiend";
-        let activeTalentId = 0;
 
         // Синхронизация с Firebase в реальном времени
         db.ref('builds').on('value', (snapshot) => {
@@ -298,6 +315,16 @@
             container.innerHTML = html;
         }
 
+        function appendItemToInput(stageIdx, item) {
+            const input = document.getElementById(`stage_items_${stageIdx}`);
+            let currentVal = input.value.trim();
+            if (currentVal.length > 0) {
+                input.value = currentVal + ", " + item;
+            } else {
+                input.value = item;
+            }
+        }
+
         function openEditor() {
             const stagesData = getCurrentStages();
             const container = document.getElementById("stagesFormContainer");
@@ -310,14 +337,19 @@
                         <input type="text" id="stage_time_${sIdx}" value="${stage.time}">
                     </div>
                     <div class="form-group">
-                        <label>Предметы (до 6 шт, через запятую):</label>
+                        <label>Предметы (до 6 шт):</label>
                         <input type="text" id="stage_items_${sIdx}" value="${stage.items ? stage.items.join(', ') : ''}">
-                        <div class="help-text">Пишите названия предметов по-английски, например: blink, black_king_bar, desolator, satanic, power_treads</div>
+                        
+                        <div style="margin-top: 5px; display: flex; gap: 5px;">
+                            <select onchange="if(this.value) { appendItemToInput(${sIdx}, this.value); this.value=''; }">
+                                <option value="">+ Добавить предмет из списка...</option>
+                                ${POPULAR_ITEMS.map(item => `<option value="${item}">${item}</option>`).join('')}
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Нейтральный предмет:</label>
                         <input type="text" id="stage_neutral_${sIdx}" value="${stage.neutral || ''}">
-                        <div class="help-text">Например: seeds_of_serenity, occult_orb, apex, penta_edged_sword</div>
                     </div>
                 </div>
             `).join('');
@@ -348,12 +380,13 @@
                     alert("❌ Ошибка сохранения: " + error.message);
                 } else {
                     closeEditor();
-                    alert("✅ Сборка с иконками успешно сохранена!");
+                    alert("✅ Сборка успешно сохранена!");
                 }
             });
         });
 
         renderNavigation();
+        loadHeroAbilities();
     </script>
 </body>
 </html>
